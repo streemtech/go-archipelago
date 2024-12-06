@@ -151,6 +151,15 @@ const (
 	SlotTypeSpectator SlotType = 0
 )
 
+// Defines values for Tags.
+const (
+	TagValueAP        Tags = "AP"
+	TagValueDeathLink Tags = "DeathLink"
+	TagValueHintGame  Tags = "HintGame"
+	TagValueTextOnly  Tags = "TextOnly"
+	TagValueTracker   Tags = "Tracker"
+)
+
 // Bounce Send this message to the server, tell it which clients should receive
 // the message and the server will forward the message to all those targets
 // to which any one requirement applies.
@@ -167,7 +176,7 @@ type Bounce struct {
 	Slots *[]string `json:"slots,omitempty"`
 
 	// Tags Optional. Client Tags this message is targeting
-	Tags *[]string `json:"tags,omitempty"`
+	Tags *[]Tags `json:"tags,omitempty"`
 }
 
 // Bounced Sent to clients after a client requested this message be sent to them, more info in the Bounce package.
@@ -184,7 +193,7 @@ type Bounced struct {
 	Slots *[]string `json:"slots,omitempty"`
 
 	// Tags Optional. Client Tags this message is targeting
-	Tags *[]string `json:"tags,omitempty"`
+	Tags *[]Tags `json:"tags,omitempty"`
 }
 
 // ClientStatus An enumeration containing the possible client states that may be used to inform the server in StatusUpdate.
@@ -219,7 +228,7 @@ type Connect struct {
 	SlotData bool `json:"slot_data"`
 
 	// Tags Denotes special features or capabilities that the sender is capable of. Tags
-	Tags []string `json:"tags"`
+	Tags []Tags `json:"tags"`
 
 	// Uuid Unique identifier for player client.
 	Uuid string `json:"uuid"`
@@ -236,7 +245,7 @@ type ConnectUpdate struct {
 	ItemsHandling ItemHandlingFlag `json:"items_handling"`
 
 	// Tags Denotes special features or capabilities that the sender is capable of. Tags
-	Tags []string `json:"tags"`
+	Tags []Tags `json:"tags"`
 }
 
 // Connected Sent to clients when the connection handshake is successfully completed.
@@ -288,7 +297,13 @@ type DataPackage struct {
 	Cmd string `json:"cmd"`
 
 	// Data The data package as a JSON object.
-	Data JSONMessagePart `json:"data"`
+	Data DataPackageObject `json:"data"`
+}
+
+// DataPackageObject defines model for DataPackageObject.
+type DataPackageObject struct {
+	// Games Mapping of all Games and their respective data
+	Games map[string]GameData `json:"games"`
 }
 
 // DataStorageOperation A DataStorageOperation manipulates or alters the value of a key in the data storage.
@@ -303,6 +318,30 @@ type DataStorageOperation struct {
 
 	// Value the value used by the operation. Operation key dependant.
 	Value *interface{} `json:"value,omitempty"`
+}
+
+// DeathLink defines model for DeathLink.
+type DeathLink struct {
+	// Cause Optional. Text to explain the cause of death. When provided, or checked, this should contain the player name, ex. "Berserker was run over by a train."
+	Cause *string `json:"cause,omitempty"`
+
+	// Source Name of the player who first died. Can be a slot name, but can also be a name from within a multiplayer game.
+	Source string `json:"source"`
+
+	// Time Unix Time Stamp of time of death.
+	Time float32 `json:"time"`
+}
+
+// GameData defines model for GameData.
+type GameData struct {
+	// Checksum A checksum hash of this game's data.
+	Checksum string `json:"checksum"`
+
+	// ItemNameToId Mapping of all item names to their respective ID.
+	ItemNameToId map[string]int `json:"item_name_to_id"`
+
+	// LocationNameToId Mapping of all location names to their respective ID.
+	LocationNameToId map[string]int `json:"location_name_to_id"`
 }
 
 // Get Used to request a single or multiple values from the server's data
@@ -569,7 +608,7 @@ type PrintJSON struct {
 
 	// Tags Message Type: Join, TagsChanged
 	// Tags of the triggering player
-	Tags *[]string `json:"tags,omitempty"`
+	Tags *[]Tags `json:"tags,omitempty"`
 
 	// Team Message Type: Join, Part, Chat, TagsChanged, Goal, Release, Collect, ItemCheat
 	// Team of the triggering player
@@ -653,13 +692,13 @@ type RoomInfo struct {
 	//     goal: Allows a player to query for items remaining in their run but only after they completed their own goal.
 	//     enabled: Denotes that players may query for any items remaining in their run (even those belonging to other players).
 	//     disabled: All remaining item query modes disabled.
-	Permissions Permission `json:"permissions"`
+	Permissions map[string]Permission `json:"permissions"`
 
 	// SeedName Uniquely identifying name of this generation
 	SeedName string `json:"seed_name"`
 
 	// Tags Denotes special features or capabilities that the sender is capable of. Example: WebHost
-	Tags []string `json:"tags"`
+	Tags []Tags `json:"tags"`
 
 	// Time Unix time stamp of "now". Send for time synchronization if wanted for things like the DeathLink Bounce.
 	Time float32 `json:"time"`
@@ -755,6 +794,9 @@ type StatusUpdate struct {
 type Sync struct {
 	Cmd string `json:"cmd"`
 }
+
+// Tags defines model for Tags.
+type Tags string
 
 // UpdateHint Sent to the server to update the status of a Hint.
 // The client must be the 'receiving_player' of the Hint,

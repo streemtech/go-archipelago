@@ -80,7 +80,7 @@ components:
             Denotes special features or capabilities that the sender is capable of. Example: WebHost
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/Tags"
         password:
           description: |
             Denoted whether a password is required to join this room.
@@ -110,8 +110,9 @@ components:
                 goal: Allows a player to query for items remaining in their run but only after they completed their own goal.
                 enabled: Denotes that players may query for any items remaining in their run (even those belonging to other players).
                 disabled: All remaining item query modes disabled.
-          allOf:
-            - $ref: "#/components/schemas/Permission"
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Permission"
 
         hint_cost:
           description: |
@@ -331,7 +332,7 @@ components:
             Tags of the triggering player
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/Tags"
         countdown:
           description: |
             Message Type: Countdown
@@ -353,7 +354,7 @@ components:
         data:
           description: The data package as a JSON object.
           allOf:
-            - $ref: "#/components/schemas/JSONMessagePart"
+            - $ref: "#/components/schemas/DataPackageObject"
     Bounced:
       type: object
       description: |
@@ -378,7 +379,7 @@ components:
           description: Optional. Client Tags this message is targeting
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/Tags"
         data:
           description: The data in the Bounce package copied
           type: object
@@ -500,7 +501,7 @@ components:
             Denotes special features or capabilities that the sender is capable of. Tags
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/Tags"
         slot_data:
           description: |
             If true, the Connect answer will contain slot_data
@@ -527,7 +528,7 @@ components:
             Denotes special features or capabilities that the sender is capable of. Tags
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/Tags"
     Sync:
       type: object
       description: |
@@ -684,7 +685,7 @@ components:
           description: Optional. Client Tags this message is targeting
           type: array
           items:
-            type: string
+            $ref: "#/components/schemas/Tags"
         data:
           description: The data in the Bounce package copied
           type: object
@@ -885,7 +886,7 @@ components:
           items:
             type: integer
 
-    Hint: #TODO
+    Hint:
       type: object
       description: An object representing a Hint.
       required:
@@ -932,9 +933,74 @@ components:
             - ref: "#/components/schemas/OperationKey"
         value:
           description: the value used by the operation. Operation key dependant.
+    DataPackageObject:
+      type: object
+      required:
+        - games
+      properties:
+        games:
+          description: Mapping of all Games and their respective data
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/GameData"
+
+    GameData:
+      type: object
+      required:
+        - item_name_to_id
+        - location_name_to_id
+        - checksum
+      properties:
+        item_name_to_id:
+          type: object
+          description: Mapping of all item names to their respective ID.
+          additionalProperties:
+            type: integer
+        location_name_to_id:
+          description: Mapping of all location names to their respective ID.
+          type: object
+          additionalProperties:
+            type: integer
+        checksum:
+          description: A checksum hash of this game's data.
+          type: string
+    DeathLink:
+      required:
+        - time
+        - source
+      properties:
+        time:
+          type: number
+          description: Unix Time Stamp of time of death.
+        cause:
+          type: string
+          description: Optional. Text to explain the cause of death. When provided, or checked, this should contain the player name, ex. "Berserker was run over by a train."
+        source:
+          type: string
+          description: Name of the player who first died. Can be a slot name, but can also be a name from within a multiplayer game.
     #########
     # ENUMS #
     #########
+    Tags:
+      type: string
+      enum:
+        - AP
+        - DeathLink
+        - HintGame
+        - Tracker
+        - TextOnly
+      x-enum-varnames:
+        - TagValueAP
+        - TagValueDeathLink
+        - TagValueHintGame
+        - TagValueTracker
+        - TagValueTextOnly
+      x-enum-descriptions:
+        - Signifies that this client is a reference client, its usefulness is mostly in debugging to compare client behaviours more easily.
+        - Client participates in the DeathLink mechanic, therefore will send and receive DeathLink bounce packets.
+        - Indicates the client is a hint game, made to send hints instead of locations. Special join/leave message, game is optional.
+        - Indicates the client is a tracker, made to track instead of sending locations. Special join/leave message, game is optional.
+        - Indicates the client is a basic client, made to chat instead of sending locations. Special join/leave message, game is optional.
     SlotType:
       type: integer
       description: An enum representing the nature of a slot.

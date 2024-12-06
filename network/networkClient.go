@@ -124,10 +124,11 @@ func (ci *ClientImpl) startReader() {
 				if ci.closeCallback != nil {
 					ci.closeCallback(readErr)
 				}
+				return
 			}
 
-			var cmds api.Commands
-			unmarshalErr := json.Unmarshal(data, &data)
+			var cmds api.Commands = []api.Command{}
+			unmarshalErr := json.Unmarshal(data, &cmds)
 			if unmarshalErr != nil {
 				if !ci.closed {
 					ci.closed = true
@@ -136,6 +137,7 @@ func (ci *ClientImpl) startReader() {
 				if ci.closeCallback != nil {
 					ci.closeCallback(unmarshalErr)
 				}
+				return
 			}
 
 			ci.sendCommandsToUser(cmds)
