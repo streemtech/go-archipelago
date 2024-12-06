@@ -286,19 +286,74 @@ components:
         information to enable a client to most easily communicate with the Archipelago server. 
         Contents include things like location id to name mappings, 
         among others; see Data Package Contents for more info.
+      required:
+        - data
+      properties:
+        data:
+          description: The data package as a JSON object.
+          allOf:
+            - $ref: "#/components/schemas/JSONMessagePart"
     Bounced:
       type: object
       description: |
         Sent to clients after a client requested this message be sent to them, more info in the Bounce package.
+      required:
+        - data
+      properties:
+        games:
+          description: Optional. Game names this message is targeting
+          type: array
+          items:
+            type: string
+        slots:
+          description: Optional. Player slot IDs that this message is targeting
+          type: array
+          items:
+            type: string
+        tags:
+          description: Optional. Client Tags this message is targeting
+          type: array
+          items:
+            type: string
+        data:
+          description: The data in the Bounce package copied
+          type: object
+          additionalProperties: true
     InvalidPacket:
       type: object
       description: |
         Sent to clients if the server caught a problem with a packet. 
         This only occurs for errors that are explicitly checked for.
+      required:
+        - type
+        - text
+      properties:
+        type:
+          description: The PacketProblemType that was detected in the packet.
+          allOf:
+            - $ref: "#/components/schemas/PacketProblemType"
+
+        original_cmd:
+          description: The cmd argument of the faulty packet, will be None if the cmd failed to be parsed.
+          type: string
+        text:
+          description: A descriptive message of the problem at hand.
+          type: string
     Retrieved:
       type: object
       description: |
         Sent to clients as a response the a Get package.
+
+        If a requested key was not present in the server's data, the associated value will be null.
+
+        Additional arguments added to the Get package that triggered this Retrieved will also be passed along.
+      required:
+        - keys
+      properties:
+        keys:
+          description: A key-value collection containing all the values for the keys requested in the Get package.
+          type: object
+          additionalProperties: true
     SetReply:
       type: object
       description: |
@@ -306,6 +361,20 @@ components:
         or if the client has registered to receive updates for a certain key using 
         the SetNotify package. SetReply packages are sent even if a Set package 
         did not alter the value for the key.
+
+        Additional arguments added to the Set package that triggered this SetReply will also be passed along.
+      required:
+        - key
+        - value
+      properties:
+        key:
+          description: The key that was updated.
+          type: string
+        value:
+          description: The new value for the key.
+        original_value:
+          description: The value the key had before it was updated. Not present on "_read" prefixed special keys.
+
     ####################
     # CLIENT -> SERVER #
     ####################
@@ -403,6 +472,37 @@ components:
           type: integer
         build:
           type: integer
+
+    SlotType:
+      type: integer
+      description: An enum representing the nature of a slot.
+      enum:
+        - 0b00
+        - 0b01
+        - 0b10
+      x-enum-varnames:
+        - SlotTypeSpectator
+        - SlotTypePlayer
+        - SlotTypeGroup
+    NetworkItemFlags:
+      type: integer
+      description: Flags used in the NetworkItem
+      enum:
+        - 0b000
+        - 0b001
+        - 0b010
+        - 0b100
+      x-enum-varnames:
+        - NetworkItemFlagEmpty
+        - NetworkItemFlagLogicalAdvancement
+        - NetworkItemFlagImportant
+        - NetworkItemFlagTrap
+      x-enum-descriptions:
+        - 0, Nothing special about this item
+        - 1, If set, indicates the item can unlock logical advancement
+        - 2, If set, indicates the item is important but not in a way that unlocks advancement
+        - 4, If set, indicates the item is a trap
+
     Permission:
       type: integer
       description: |
@@ -500,21 +600,207 @@ components:
         - PrintJsonTypeRelease
         - PrintJsonTypeCollect
         - PrintJsonTypeCountdown
+    PacketProblemType:
+      type: string
+      enum:
+        - cmd
+        - arguments
+      x-enum-descriptions:
+        - cmd argument of the faulty packet that could not be parsed correctly.
+        - Arguments of the faulty packet which were not correct.
+      x-enum-varnames:
+        - PacketProblemTypeCmd
+        - PacketProblemTypeArguments
+    JSONMessagePartType:
+      description: |
+        type is used to denote the intent of the message part. 
+        This can be used to indicate special information which may be rendered differently depending on client. 
+        How these types are displayed in Archipelago's ALttP client is not the end-all be-all. 
+        Other clients may choose to interpret and display these messages differently.
+      type: string
+      enum:
+        - text
+        - player_id
+        - player_name
+        - item_id
+        - item_name
+        - location_id
+        - location_name
+        - entrance_name
+        - color
+      x-enum-varnames:
+        - JsonMessagePartTypeText
+        - JsonMessagePartTypePlayerID
+        - JsonMessagePartTypePlayerName
+        - JsonMessagePartTypeItemID
+        - JsonMessagePartTypeItemName
+        - JsonMessagePartTypeLocationID
+        - JsonMessagePartTypeLocationName
+        - JsonMessagePartTypeEntranceName
+        - JsonMessagePartTypeColor
+      x-enum-descriptions:
+        - Regular text content. Is the default type and as such may be omitted.
+        - player ID of someone on your team, should be resolved to Player Name
+        - Player Name, could be a player within a multiplayer game or from another team, not ID resolvable
+        - Item ID, should be resolved to Item Name
+        - Item Name, not currently used over network, but supported by reference Clients.
+        - Location ID, should be resolved to Location Name
+        - Location Name, not currently used over network, but supported by reference Clients.
+        - Entrance Name. No ID mapping exists.
+        - Regular text that should be colored. Only type that will contain color data.
+    JSONMessagePartColor:
+      description:
+        Color is used to denote a console color to display the message part with and is only send if the type is color.
+        This is limited to console colors due to backwards compatibility needs with games such as ALttP.
+        Although background colors as well as foreground colors are listed, only one may be applied to a JSONMessagePart at a time.
+      type: string
+      enum:
+        - bold
+        - underline
+        - black
+        - red
+        - green
+        - yellow
+        - blue
+        - magenta
+        - cyan
+        - white
+        - black_bg
+        - red_bg
+        - green_bg
+        - yellow_bg
+        - blue_bg
+        - magenta_bg
+        - cyan_bg
+        - white_bg
+      x-enum-varnames:
+        - JsonMessagePartColorBold
+        - JsonMessagePartColorUnderline
+        - JsonMessagePartColorBlack
+        - JsonMessagePartColorRed
+        - JsonMessagePartColorGreen
+        - JsonMessagePartColorYellow
+        - JsonMessagePartColorBlue
+        - JsonMessagePartColorMagenta
+        - JsonMessagePartColorCyan
+        - JsonMessagePartColorWhite
+        - JsonMessagePartColorBlackBG
+        - JsonMessagePartColorRedBG
+        - JsonMessagePartColorGreenBG
+        - JsonMessagePartColorYellowBG
+        - JsonMessagePartColorBlueBG
+        - JsonMessagePartColorMagentaBG
+        - JsonMessagePartColorCyanBG
+        - JsonMessagePartColorWhiteBG
+
     JSONMessagePart:
+      description: |
+        Message nodes sent along with PrintJSON packet to be reconstructed into a legible message. 
+        The nodes are intended to be read in the order they are listed in the packet.
       type: object
-      # type: Optional[str]
-      # text: Optional[str]
-      # color: Optional[str] # only available if type is a color
-      # flags: Optional[int] # only available if type is an item_id or item_name
-      # player: Optional[int] # only available if type is either item or location
-    NetworkPlayer: #TODO
+      required:
+        - type
+        - text
+      properties:
+        type:
+          $ref: "#/components/schemas/JSONMessagePartType"
+        text:
+          type: string
+        color:
+          description: only available if type is a color
+          allOf:
+            - $ref: "#/components/schemas/JSONMessagePartColor"
+        flags:
+          description: only available if type is an item_id or item_name
+          type: integer
+        player:
+          description: only available if type is either item or location
+          type: integer
+    NetworkPlayer:
+      description: |
+        A list of objects. Each object denotes one player. 
+        Each object has four fields about the player, in this order: 
+        team, slot, alias, and name. team and slot are ints, alias and name are strs.
+
+        Each player belongs to a team and has a slot. Team numbers start at 0. 
+        Slot numbers are unique per team and start at 1. 
+        Slot number 0 refers to the Archipelago server; 
+        this may appear in instances where the server grants the player an item.
+
+        Alias represents the player's name in current time. 
+        Name is the original name used when the session was generated. 
+        This is typically distinct in games which require baking names into ROMs or for async games.
       type: object
-    NetworkItem: #TODO
+      required:
+        - team
+        - slot
+        - alias
+        - name
+      properties:
+        team:
+          type: integer
+          description: Team numbers start at 0
+        slot:
+          type: integer
+          description: |
+            Slot numbers are unique per team and start at 1. 
+            Slot number 0 refers to the Archipelago server; 
+            this may appear in instances where the server grants the player an item
+        alias:
+          type: string
+          description: represents the player's name in current time.
+        name:
+          type: string
+          description: |
+            The original name used when the session was generated. 
+            This is typically distinct in games which require baking names into ROMs or for async games.
+    NetworkItem:
       type: object
-    NetworkSlot: #TODO
+      description: |
+        Items that are sent over the net (in packets) use the following data structure and are sent as objects:
+      required:
+        - item
+        - location
+        - player
+        - flags
+      properties:
+        item:
+          description: |
+            The item id of the item. 
+            Item ids are only supported in the range of [-253, 253 - 1]. 
+            Anything ≤ 0 is reserved for Archipelago use.
+          type: integer
+        location:
+          description: |
+            The location id of the item inside the world. 
+            Location ids are only supported in the range of [-253, 253 - 1]. 
+            Anything ≤ 0 reserved for Archipelago use.
+          type: integer
+        player:
+          description: |
+            The player slot of the world the item is located in, 
+            except when inside an LocationInfo Packet then it 
+            will be the slot of the player to receive the item.
+          type: integer
+        flags:
+          $ref: "#/components/schemas/NetworkItemFlags"
+    NetworkSlot:
+      description: An object representing static information about a slot.
       type: object
-      # properties:
-      #   name: str
-      #   game: str
-      #   type: SlotType
-      #   group_members: typing.List[int] = []  # only populated if type == group
+      required:
+        - name
+        - game
+        - type
+        - group_members
+      properties:
+        name:
+          type: string
+        game:
+          type: string
+        type:
+          $ref: "#/components/schemas/SlotType"
+        group_members:
+          description: only populated if type == group
+          type: array
+          items:
+            type: integer

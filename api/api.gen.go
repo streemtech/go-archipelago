@@ -12,6 +12,55 @@ const (
 	ConnectionRefusedInvalidSlot          ConnectionRefusedError = "InvalidSlot"
 )
 
+// Defines values for JSONMessagePartColor.
+const (
+	JsonMessagePartColorBlack     JSONMessagePartColor = "black"
+	JsonMessagePartColorBlackBG   JSONMessagePartColor = "black_bg"
+	JsonMessagePartColorBlue      JSONMessagePartColor = "blue"
+	JsonMessagePartColorBlueBG    JSONMessagePartColor = "blue_bg"
+	JsonMessagePartColorBold      JSONMessagePartColor = "bold"
+	JsonMessagePartColorCyan      JSONMessagePartColor = "cyan"
+	JsonMessagePartColorCyanBG    JSONMessagePartColor = "cyan_bg"
+	JsonMessagePartColorGreen     JSONMessagePartColor = "green"
+	JsonMessagePartColorGreenBG   JSONMessagePartColor = "green_bg"
+	JsonMessagePartColorMagenta   JSONMessagePartColor = "magenta"
+	JsonMessagePartColorMagentaBG JSONMessagePartColor = "magenta_bg"
+	JsonMessagePartColorRed       JSONMessagePartColor = "red"
+	JsonMessagePartColorRedBG     JSONMessagePartColor = "red_bg"
+	JsonMessagePartColorUnderline JSONMessagePartColor = "underline"
+	JsonMessagePartColorWhite     JSONMessagePartColor = "white"
+	JsonMessagePartColorWhiteBG   JSONMessagePartColor = "white_bg"
+	JsonMessagePartColorYellow    JSONMessagePartColor = "yellow"
+	JsonMessagePartColorYellowBG  JSONMessagePartColor = "yellow_bg"
+)
+
+// Defines values for JSONMessagePartType.
+const (
+	JsonMessagePartTypeColor        JSONMessagePartType = "color"
+	JsonMessagePartTypeEntranceName JSONMessagePartType = "entrance_name"
+	JsonMessagePartTypeItemID       JSONMessagePartType = "item_id"
+	JsonMessagePartTypeItemName     JSONMessagePartType = "item_name"
+	JsonMessagePartTypeLocationID   JSONMessagePartType = "location_id"
+	JsonMessagePartTypeLocationName JSONMessagePartType = "location_name"
+	JsonMessagePartTypePlayerID     JSONMessagePartType = "player_id"
+	JsonMessagePartTypePlayerName   JSONMessagePartType = "player_name"
+	JsonMessagePartTypeText         JSONMessagePartType = "text"
+)
+
+// Defines values for NetworkItemFlags.
+const (
+	NetworkItemFlagEmpty              NetworkItemFlags = 0
+	NetworkItemFlagImportant          NetworkItemFlags = 2
+	NetworkItemFlagLogicalAdvancement NetworkItemFlags = 1
+	NetworkItemFlagTrap               NetworkItemFlags = 4
+)
+
+// Defines values for PacketProblemType.
+const (
+	PacketProblemTypeArguments PacketProblemType = "arguments"
+	PacketProblemTypeCmd       PacketProblemType = "cmd"
+)
+
 // Defines values for Permission.
 const (
 	PermissionAuto        Permission = 6
@@ -40,13 +89,32 @@ const (
 	PrintJsonTypeTutorial           PrintJsonType = "Tutorial"
 )
 
+// Defines values for SlotType.
+const (
+	SlotTypeGroup     SlotType = 2
+	SlotTypePlayer    SlotType = 1
+	SlotTypeSpectator SlotType = 0
+)
+
 // Bounce Send this message to the server, tell it which clients should receive
 // the message and the server will forward the message to all those targets
 // to which any one requirement applies.
 type Bounce = map[string]interface{}
 
 // Bounced Sent to clients after a client requested this message be sent to them, more info in the Bounce package.
-type Bounced = map[string]interface{}
+type Bounced struct {
+	// Data The data in the Bounce package copied
+	Data map[string]interface{} `json:"data"`
+
+	// Games Optional. Game names this message is targeting
+	Games *[]string `json:"games,omitempty"`
+
+	// Slots Optional. Player slot IDs that this message is targeting
+	Slots *[]string `json:"slots,omitempty"`
+
+	// Tags Optional. Client Tags this message is targeting
+	Tags *[]string `json:"tags,omitempty"`
+}
 
 // Connect Sent by the client to initiate a connection to an Archipelago game session.
 type Connect = map[string]interface{}
@@ -96,7 +164,10 @@ type ConnectionRefusedError string
 // information to enable a client to most easily communicate with the Archipelago server.
 // Contents include things like location id to name mappings,
 // among others; see Data Package Contents for more info.
-type DataPackage = map[string]interface{}
+type DataPackage struct {
+	// Data The data package as a JSON object.
+	Data JSONMessagePart `json:"data"`
+}
 
 // Get Used to request a single or multiple values from the server's data
 // storage, see the Set package for how to write values to the data storage.
@@ -109,10 +180,45 @@ type GetDataPackage = map[string]interface{}
 
 // InvalidPacket Sent to clients if the server caught a problem with a packet.
 // This only occurs for errors that are explicitly checked for.
-type InvalidPacket = map[string]interface{}
+type InvalidPacket struct {
+	// OriginalCmd The cmd argument of the faulty packet, will be None if the cmd failed to be parsed.
+	OriginalCmd *string `json:"original_cmd,omitempty"`
 
-// JSONMessagePart defines model for JSONMessagePart.
-type JSONMessagePart = map[string]interface{}
+	// Text A descriptive message of the problem at hand.
+	Text string `json:"text"`
+
+	// Type The PacketProblemType that was detected in the packet.
+	Type PacketProblemType `json:"type"`
+}
+
+// JSONMessagePart Message nodes sent along with PrintJSON packet to be reconstructed into a legible message.
+// The nodes are intended to be read in the order they are listed in the packet.
+type JSONMessagePart struct {
+	// Color only available if type is a color
+	Color *JSONMessagePartColor `json:"color,omitempty"`
+
+	// Flags only available if type is an item_id or item_name
+	Flags *int `json:"flags,omitempty"`
+
+	// Player only available if type is either item or location
+	Player *int   `json:"player,omitempty"`
+	Text   string `json:"text"`
+
+	// Type type is used to denote the intent of the message part.
+	// This can be used to indicate special information which may be rendered differently depending on client.
+	// How these types are displayed in Archipelago's ALttP client is not the end-all be-all.
+	// Other clients may choose to interpret and display these messages differently.
+	Type JSONMessagePartType `json:"type"`
+}
+
+// JSONMessagePartColor Color is used to denote a console color to display the message part with and is only send if the type is color. This is limited to console colors due to backwards compatibility needs with games such as ALttP. Although background colors as well as foreground colors are listed, only one may be applied to a JSONMessagePart at a time.
+type JSONMessagePartColor string
+
+// JSONMessagePartType type is used to denote the intent of the message part.
+// This can be used to indicate special information which may be rendered differently depending on client.
+// How these types are displayed in Archipelago's ALttP client is not the end-all be-all.
+// Other clients may choose to interpret and display these messages differently.
+type JSONMessagePartType string
 
 // LocationChecks Sent to server to inform it of locations that the client has checked. Used to inform the server of new checks that are made, as well as to sync state.
 type LocationChecks = map[string]interface{}
@@ -138,14 +244,70 @@ type LocationInfo struct {
 // To do this, set the create_as_hint parameter to a non-zero value.
 type LocationScouts = map[string]interface{}
 
-// NetworkItem defines model for NetworkItem.
-type NetworkItem = map[string]interface{}
+// NetworkItem Items that are sent over the net (in packets) use the following data structure and are sent as objects:
+type NetworkItem struct {
+	// Flags Flags used in the NetworkItem
+	Flags NetworkItemFlags `json:"flags"`
 
-// NetworkPlayer defines model for NetworkPlayer.
-type NetworkPlayer = map[string]interface{}
+	// Item The item id of the item.
+	// Item ids are only supported in the range of [-253, 253 - 1].
+	// Anything ≤ 0 is reserved for Archipelago use.
+	Item int `json:"item"`
 
-// NetworkSlot defines model for NetworkSlot.
-type NetworkSlot = map[string]interface{}
+	// Location The location id of the item inside the world.
+	// Location ids are only supported in the range of [-253, 253 - 1].
+	// Anything ≤ 0 reserved for Archipelago use.
+	Location int `json:"location"`
+
+	// Player The player slot of the world the item is located in,
+	// except when inside an LocationInfo Packet then it
+	// will be the slot of the player to receive the item.
+	Player int `json:"player"`
+}
+
+// NetworkItemFlags Flags used in the NetworkItem
+type NetworkItemFlags int
+
+// NetworkPlayer A list of objects. Each object denotes one player.
+// Each object has four fields about the player, in this order:
+// team, slot, alias, and name. team and slot are ints, alias and name are strs.
+//
+// Each player belongs to a team and has a slot. Team numbers start at 0.
+// Slot numbers are unique per team and start at 1.
+// Slot number 0 refers to the Archipelago server;
+// this may appear in instances where the server grants the player an item.
+//
+// Alias represents the player's name in current time.
+// Name is the original name used when the session was generated.
+// This is typically distinct in games which require baking names into ROMs or for async games.
+type NetworkPlayer struct {
+	// Alias represents the player's name in current time.
+	Alias string `json:"alias"`
+
+	// Name The original name used when the session was generated.
+	// This is typically distinct in games which require baking names into ROMs or for async games.
+	Name string `json:"name"`
+
+	// Slot Slot numbers are unique per team and start at 1.
+	// Slot number 0 refers to the Archipelago server;
+	// this may appear in instances where the server grants the player an item
+	Slot int `json:"slot"`
+
+	// Team Team numbers start at 0
+	Team int `json:"team"`
+}
+
+// NetworkSlot An object representing static information about a slot.
+type NetworkSlot struct {
+	Game string `json:"game"`
+
+	// GroupMembers only populated if type == group
+	GroupMembers []int  `json:"group_members"`
+	Name         string `json:"name"`
+
+	// Type An enum representing the nature of a slot.
+	Type SlotType `json:"type"`
+}
 
 // NetworkVersion An object representing software versioning. Used in the Connect packet to allow the client to inform the server of the Archipelago version it supports.
 type NetworkVersion struct {
@@ -153,6 +315,9 @@ type NetworkVersion struct {
 	Major *int `json:"major,omitempty"`
 	Minor *int `json:"minor,omitempty"`
 }
+
+// PacketProblemType defines model for PacketProblemType.
+type PacketProblemType string
 
 // Permission An enumeration containing the possible command permission, for commands that may be restricted.
 type Permission int
@@ -169,7 +334,7 @@ type PrintJSON struct {
 
 	// Data Message Type: (all)
 	// Textual content of this message
-	Data *[]JSONMessagePart `json:"data,omitempty"`
+	Data []JSONMessagePart `json:"data"`
 
 	// Found Message Type: Hint
 	// Whether the location hinted for was checked
@@ -185,7 +350,7 @@ type PrintJSON struct {
 
 	// Receiving Message Type: ItemSend, ItemCheat, Hint
 	// Destination player's ID
-	Receiving *interface{} `json:"receiving,omitempty"`
+	Receiving *int `json:"receiving,omitempty"`
 
 	// Slot Message Type: Join, Part, Chat, TagsChanged, Goal, Release, Collect
 	// Slot of the triggering player
@@ -219,7 +384,14 @@ type ReceivedItems struct {
 }
 
 // Retrieved Sent to clients as a response the a Get package.
-type Retrieved = map[string]interface{}
+//
+// If a requested key was not present in the server's data, the associated value will be null.
+//
+// Additional arguments added to the Get package that triggered this Retrieved will also be passed along.
+type Retrieved struct {
+	// Keys A key-value collection containing all the values for the keys requested in the Get package.
+	Keys map[string]interface{} `json:"keys"`
+}
 
 // RoomInfo Sent to clients when they connect to an Archipelago server.
 type RoomInfo struct {
@@ -309,7 +481,21 @@ type SetNotify = map[string]interface{}
 // or if the client has registered to receive updates for a certain key using
 // the SetNotify package. SetReply packages are sent even if a Set package
 // did not alter the value for the key.
-type SetReply = map[string]interface{}
+//
+// Additional arguments added to the Set package that triggered this SetReply will also be passed along.
+type SetReply struct {
+	// Key The key that was updated.
+	Key string `json:"key"`
+
+	// OriginalValue The value the key had before it was updated. Not present on "_read" prefixed special keys.
+	OriginalValue *interface{} `json:"original_value,omitempty"`
+
+	// Value The new value for the key.
+	Value interface{} `json:"value"`
+}
+
+// SlotType An enum representing the nature of a slot.
+type SlotType int
 
 // StatusUpdate Sent to the server to update on the sender's status.
 // Examples include readiness or goal completion.
