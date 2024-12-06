@@ -472,7 +472,121 @@ components:
           type: integer
         build:
           type: integer
+    JSONMessagePart:
+      description: |
+        Message nodes sent along with PrintJSON packet to be reconstructed into a legible message. 
+        The nodes are intended to be read in the order they are listed in the packet.
+      type: object
+      required:
+        - type
+        - text
+      properties:
+        type:
+          $ref: "#/components/schemas/JSONMessagePartType"
+        text:
+          type: string
+        color:
+          description: only available if type is a color
+          allOf:
+            - $ref: "#/components/schemas/JSONMessagePartColor"
+        flags:
+          description: only available if type is an item_id or item_name
+          type: integer
+        player:
+          description: only available if type is either item or location
+          type: integer
+    NetworkPlayer:
+      description: |
+        A list of objects. Each object denotes one player. 
+        Each object has four fields about the player, in this order: 
+        team, slot, alias, and name. team and slot are ints, alias and name are strs.
 
+        Each player belongs to a team and has a slot. Team numbers start at 0. 
+        Slot numbers are unique per team and start at 1. 
+        Slot number 0 refers to the Archipelago server; 
+        this may appear in instances where the server grants the player an item.
+
+        Alias represents the player's name in current time. 
+        Name is the original name used when the session was generated. 
+        This is typically distinct in games which require baking names into ROMs or for async games.
+      type: object
+      required:
+        - team
+        - slot
+        - alias
+        - name
+      properties:
+        team:
+          type: integer
+          description: Team numbers start at 0
+        slot:
+          type: integer
+          description: |
+            Slot numbers are unique per team and start at 1. 
+            Slot number 0 refers to the Archipelago server; 
+            this may appear in instances where the server grants the player an item
+        alias:
+          type: string
+          description: represents the player's name in current time.
+        name:
+          type: string
+          description: |
+            The original name used when the session was generated. 
+            This is typically distinct in games which require baking names into ROMs or for async games.
+    NetworkItem:
+      type: object
+      description: |
+        Items that are sent over the net (in packets) use the following data structure and are sent as objects:
+      required:
+        - item
+        - location
+        - player
+        - flags
+      properties:
+        item:
+          description: |
+            The item id of the item. 
+            Item ids are only supported in the range of [-253, 253 - 1]. 
+            Anything ≤ 0 is reserved for Archipelago use.
+          type: integer
+        location:
+          description: |
+            The location id of the item inside the world. 
+            Location ids are only supported in the range of [-253, 253 - 1]. 
+            Anything ≤ 0 reserved for Archipelago use.
+          type: integer
+        player:
+          description: |
+            The player slot of the world the item is located in, 
+            except when inside an LocationInfo Packet then it 
+            will be the slot of the player to receive the item.
+          type: integer
+        flags:
+          $ref: "#/components/schemas/NetworkItemFlags"
+    NetworkSlot:
+      description: An object representing static information about a slot.
+      type: object
+      required:
+        - name
+        - game
+        - type
+        - group_members
+      properties:
+        name:
+          type: string
+        game:
+          type: string
+        type:
+          $ref: "#/components/schemas/SlotType"
+        group_members:
+          description: only populated if type == group
+          type: array
+          items:
+            type: integer
+
+    #########
+    # ENUMS #
+    #########
     SlotType:
       type: integer
       description: An enum representing the nature of a slot.
@@ -692,115 +806,3 @@ components:
         - JsonMessagePartColorMagentaBG
         - JsonMessagePartColorCyanBG
         - JsonMessagePartColorWhiteBG
-
-    JSONMessagePart:
-      description: |
-        Message nodes sent along with PrintJSON packet to be reconstructed into a legible message. 
-        The nodes are intended to be read in the order they are listed in the packet.
-      type: object
-      required:
-        - type
-        - text
-      properties:
-        type:
-          $ref: "#/components/schemas/JSONMessagePartType"
-        text:
-          type: string
-        color:
-          description: only available if type is a color
-          allOf:
-            - $ref: "#/components/schemas/JSONMessagePartColor"
-        flags:
-          description: only available if type is an item_id or item_name
-          type: integer
-        player:
-          description: only available if type is either item or location
-          type: integer
-    NetworkPlayer:
-      description: |
-        A list of objects. Each object denotes one player. 
-        Each object has four fields about the player, in this order: 
-        team, slot, alias, and name. team and slot are ints, alias and name are strs.
-
-        Each player belongs to a team and has a slot. Team numbers start at 0. 
-        Slot numbers are unique per team and start at 1. 
-        Slot number 0 refers to the Archipelago server; 
-        this may appear in instances where the server grants the player an item.
-
-        Alias represents the player's name in current time. 
-        Name is the original name used when the session was generated. 
-        This is typically distinct in games which require baking names into ROMs or for async games.
-      type: object
-      required:
-        - team
-        - slot
-        - alias
-        - name
-      properties:
-        team:
-          type: integer
-          description: Team numbers start at 0
-        slot:
-          type: integer
-          description: |
-            Slot numbers are unique per team and start at 1. 
-            Slot number 0 refers to the Archipelago server; 
-            this may appear in instances where the server grants the player an item
-        alias:
-          type: string
-          description: represents the player's name in current time.
-        name:
-          type: string
-          description: |
-            The original name used when the session was generated. 
-            This is typically distinct in games which require baking names into ROMs or for async games.
-    NetworkItem:
-      type: object
-      description: |
-        Items that are sent over the net (in packets) use the following data structure and are sent as objects:
-      required:
-        - item
-        - location
-        - player
-        - flags
-      properties:
-        item:
-          description: |
-            The item id of the item. 
-            Item ids are only supported in the range of [-253, 253 - 1]. 
-            Anything ≤ 0 is reserved for Archipelago use.
-          type: integer
-        location:
-          description: |
-            The location id of the item inside the world. 
-            Location ids are only supported in the range of [-253, 253 - 1]. 
-            Anything ≤ 0 reserved for Archipelago use.
-          type: integer
-        player:
-          description: |
-            The player slot of the world the item is located in, 
-            except when inside an LocationInfo Packet then it 
-            will be the slot of the player to receive the item.
-          type: integer
-        flags:
-          $ref: "#/components/schemas/NetworkItemFlags"
-    NetworkSlot:
-      description: An object representing static information about a slot.
-      type: object
-      required:
-        - name
-        - game
-        - type
-        - group_members
-      properties:
-        name:
-          type: string
-        game:
-          type: string
-        type:
-          $ref: "#/components/schemas/SlotType"
-        group_members:
-          description: only populated if type == group
-          type: array
-          items:
-            type: integer
