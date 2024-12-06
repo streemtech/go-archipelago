@@ -7,6 +7,41 @@ servers:
 
 components:
   schemas:
+    Commands:
+      type: array
+      items:
+        $ref: "#/components/schemas/Command"
+    Command:
+      type: object
+      oneOf:
+        - $ref: "#/components/schemas/RoomInfo"
+        - $ref: "#/components/schemas/ConnectionRefused"
+        - $ref: "#/components/schemas/Connected"
+        - $ref: "#/components/schemas/ReceivedItems"
+        - $ref: "#/components/schemas/LocationInfo"
+        - $ref: "#/components/schemas/RoomUpdate"
+        - $ref: "#/components/schemas/PrintJSON"
+        - $ref: "#/components/schemas/DataPackage"
+        - $ref: "#/components/schemas/Bounced"
+        - $ref: "#/components/schemas/InvalidPacket"
+        - $ref: "#/components/schemas/Retrieved"
+        - $ref: "#/components/schemas/SetReply"
+        - $ref: "#/components/schemas/Connect"
+        - $ref: "#/components/schemas/ConnectUpdate"
+        - $ref: "#/components/schemas/Sync"
+        - $ref: "#/components/schemas/LocationChecks"
+        - $ref: "#/components/schemas/LocationScouts"
+        - $ref: "#/components/schemas/UpdateHint"
+        - $ref: "#/components/schemas/StatusUpdate"
+        - $ref: "#/components/schemas/Say"
+        - $ref: "#/components/schemas/GetDataPackage"
+        - $ref: "#/components/schemas/Bounce"
+        - $ref: "#/components/schemas/Get"
+        - $ref: "#/components/schemas/Set"
+        - $ref: "#/components/schemas/SetNotify"
+      discriminator:
+        propertyName: "cmd"
+
     ####################
     # SERVER -> CLIENT #
     ####################
@@ -26,7 +61,10 @@ components:
         - datapackage_checksums
         - seed_name
         - time
+        - cmd
       properties:
+        cmd:
+          type: string
         version:
           description: |
             Object denoting the version of Archipelago which the server is running.
@@ -108,7 +146,11 @@ components:
       description: |
         Sent to clients when the server refuses connection. 
         This is sent during the initial connection handshake.
+      required:
+        - cmd
       properties:
+        cmd:
+          type: string
         errors:
           description: |
             Optional. When provided, should contain any one of: 
@@ -129,7 +171,10 @@ components:
         - slot_data
         - slot_info
         - hint_points
+        - cmd
       properties:
+        cmd:
+          type: string
         team:
           description: Your team number. See NetworkPlayer for more info on team number.
           type: integer
@@ -171,7 +216,10 @@ components:
       required:
         - index
         - items
+        - cmd
       properties:
+        cmd:
+          type: string
         index:
           description: The next empty slot in the list of items for the receiving client.
           type: integer
@@ -187,7 +235,10 @@ components:
         responds with the item in the location(s) being scouted.
       required:
         - locations
+        - cmd
       properties:
+        cmd:
+          type: string
         locations:
           description: Contains list of item(s) in the location(s) scouted
           type: array
@@ -198,7 +249,11 @@ components:
       description: |
         Sent when there is a need to update information about the present game session.
         All arguments for this packet are optional, only changes are sent.
+      required:
+        - cmd
       properties:
+        cmd:
+          type: string
         players:
           description: Sent in the event of an alias rename. Always sends all players, whether connected or not.
           type: array
@@ -222,7 +277,10 @@ components:
         All other arguments may be ignored safely.
       required:
         - data
+        - cmd
       properties:
+        cmd:
+          type: string
         data:
           description: |
             Message Type: (all)
@@ -288,7 +346,10 @@ components:
         among others; see Data Package Contents for more info.
       required:
         - data
+        - cmd
       properties:
+        cmd:
+          type: string
         data:
           description: The data package as a JSON object.
           allOf:
@@ -299,7 +360,10 @@ components:
         Sent to clients after a client requested this message be sent to them, more info in the Bounce package.
       required:
         - data
+        - cmd
       properties:
+        cmd:
+          type: string
         games:
           description: Optional. Game names this message is targeting
           type: array
@@ -327,7 +391,10 @@ components:
       required:
         - type
         - text
+        - cmd
       properties:
+        cmd:
+          type: string
         type:
           description: The PacketProblemType that was detected in the packet.
           allOf:
@@ -349,7 +416,10 @@ components:
         Additional arguments added to the Get package that triggered this Retrieved will also be passed along.
       required:
         - keys
+        - cmd
       properties:
+        cmd:
+          type: string
         keys:
           description: A key-value collection containing all the values for the keys requested in the Get package.
           type: object
@@ -366,7 +436,10 @@ components:
       required:
         - key
         - value
+        - cmd
       properties:
+        cmd:
+          type: string
         key:
           description: The key that was updated.
           type: string
@@ -383,18 +456,38 @@ components:
       type: object
       description: |
         Sent by the client to initiate a connection to an Archipelago game session.
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
     ConnectUpdate:
       type: object
       description: |
         Update arguments from the Connect package, currently only updating tags and items_handling is supported.
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
     Sync:
       type: object
       description: |
         Sent to server to request a ReceivedItems packet to synchronize items.
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
     LocationChecks:
       type: object
       description: |
         Sent to server to inform it of locations that the client has checked. Used to inform the server of new checks that are made, as well as to sync state.
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
     LocationScouts:
       type: object
       description: |
@@ -410,39 +503,74 @@ components:
         but without deducting hint points. This is useful in cases where an item appears 
         in the game world, such as 'ledge items' in A Link to the Past. 
         To do this, set the create_as_hint parameter to a non-zero value.
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
     UpdateHint:
       type: object
       description: |
         Sent to the server to update the status of a Hint. 
         The client must be the 'receiving_player' of the Hint, 
         or the update fails.
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
     StatusUpdate:
       type: object
       description: |
         Sent to the server to update on the sender's status. 
         Examples include readiness or goal completion. 
         (Example: defeated Ganon in A Link to the Past)
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
     Say:
       type: object
       description: |
         Basic chat command which sends text to the server to be distributed to other clients.
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
     GetDataPackage:
       type: object
       description: |
         Requests the data package from the server. 
         Does not require client authentication.
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
     Bounce:
       type: object
       description: |
         Send this message to the server, tell it which clients should receive 
         the message and the server will forward the message to all those targets 
         to which any one requirement applies.
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
     Get:
       type: object
       description: |
         Used to request a single or multiple values from the server's data 
         storage, see the Set package for how to write values to the data storage. 
         A Get package will be answered with a Retrieved package.
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
     Set:
       type: object
       description: |
@@ -450,11 +578,21 @@ components:
         be shared across worlds or just saved for later. Values for keys 
         in the data storage can be retrieved with a Get package, or monitored 
         with a SetNotify package. Keys that start with _read_ cannot be set.
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
     SetNotify:
       type: object
       description: |
         Used to register your current session for receiving all SetReply 
         packages of certain keys to allow your client to keep track of changes.
+      required:
+        - cmd
+      properties:
+        cmd:
+          type: string
 
     ############
     # SUBTYPES #
