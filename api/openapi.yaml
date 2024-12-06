@@ -458,18 +458,76 @@ components:
         Sent by the client to initiate a connection to an Archipelago game session.
       required:
         - cmd
+        - password
+        - game
+        - name
+        - uuid
+        - version
+        - items_handling
+        - tags
+        - slot_data
       properties:
         cmd:
           type: string
+        password:
+          description: |
+            If the game session requires a password, it should be passed here.
+          type: string
+        game:
+          description: |
+            The name of the game the client is playing. Example: A Link to the Past
+          type: string
+        name:
+          description: |
+            The player name for this client.
+          type: string
+        uuid:
+          description: |
+            Unique identifier for player client.
+          type: string
+        version:
+          description: |
+            An object representing the Archipelago version this client supports.
+          allOf:
+            - $ref: "#/components/schemas/NetworkVersion"
+        items_handling:
+          description: |
+            Flags configuring which items should be sent by the server. Read below for individual flags.
+          allOf:
+            - $ref: "#/components/schemas/ItemHandlingFlag"
+        tags:
+          description: |
+            Denotes special features or capabilities that the sender is capable of. Tags
+          type: array
+          items:
+            type: string
+        slot_data:
+          description: |
+            If true, the Connect answer will contain slot_data
+          type: boolean
+
     ConnectUpdate:
       type: object
       description: |
         Update arguments from the Connect package, currently only updating tags and items_handling is supported.
       required:
         - cmd
+        - items_handling
+        - tags
       properties:
         cmd:
           type: string
+        items_handling:
+          description: |
+            Flags configuring which items should be sent by the server.
+          allOf:
+            - $ref: "#/components/schemas/ItemHandlingFlag"
+        tags:
+          description: |
+            Denotes special features or capabilities that the sender is capable of. Tags
+          type: array
+          items:
+            type: string
     Sync:
       type: object
       description: |
@@ -482,12 +540,22 @@ components:
     LocationChecks:
       type: object
       description: |
-        Sent to server to inform it of locations that the client has checked. Used to inform the server of new checks that are made, as well as to sync state.
+        Sent to server to inform it of locations that the client has checked. 
+        Used to inform the server of new checks that are made, as well as to sync state.
       required:
         - cmd
+        - locations
       properties:
         cmd:
           type: string
+        locations:
+          description: |
+            The ids of the locations checked by the client. 
+            May contain any number of checks, even ones sent before; 
+            duplicates do not cause issues with the Archipelago server.
+          type: array
+          items:
+            type: integer
     LocationScouts:
       type: object
       description: |
@@ -505,9 +573,23 @@ components:
         To do this, set the create_as_hint parameter to a non-zero value.
       required:
         - cmd
+        - locations
       properties:
         cmd:
           type: string
+        locations:
+          description: |
+            The ids of the locations seen by the client. 
+            May contain any number of locations, even ones sent before; 
+            duplicates do not cause issues with the Archipelago server.
+          type: array
+          items:
+            type: integer
+        create_as_hint:
+          description: |
+            If non-zero, the scouted locations get created and broadcasted as a player-visible hint.
+            If 2 only new hints are broadcast, however this does not remove them from the LocationInfo reply.
+          type: integer
     UpdateHint:
       type: object
       description: |
@@ -516,9 +598,22 @@ components:
         or the update fails.
       required:
         - cmd
+        - player
+        - location
       properties:
         cmd:
           type: string
+        player:
+          description: The ID of the player whose location is being hinted for.
+          type: integer
+        location:
+          description: The ID of the location to update the hint for. If no hint exists for this location, the packet is ignored.
+          type: integer
+        status:
+          description: If included, sets the status of the hint to this status. Cannot set HINT_FOUND, or change the status from HINT_FOUND.
+          allOf:
+            - $ref: "#/components/schemas/HintStatus"
+
     StatusUpdate:
       type: object
       description: |
@@ -527,17 +622,26 @@ components:
         (Example: defeated Ganon in A Link to the Past)
       required:
         - cmd
+        - status
       properties:
         cmd:
           type: string
+        status:
+          description: One of Client States. Send as int. Follow the link for more information.
+          allOf:
+            - $ref: "#/components/schemas/ClientStatus"
     Say:
       type: object
       description: |
         Basic chat command which sends text to the server to be distributed to other clients.
       required:
         - cmd
+        - text
       properties:
         cmd:
+          type: string
+        text:
+          description: Text to send to others.
           type: string
     GetDataPackage:
       type: object
@@ -549,6 +653,11 @@ components:
       properties:
         cmd:
           type: string
+        games:
+          description: If specified, will only send back the specified data. Such as, ["Factorio"] -> Datapackage with only Factorio data.
+          type: array
+          items:
+            type: string
     Bounce:
       type: object
       description: |
@@ -557,9 +666,29 @@ components:
         to which any one requirement applies.
       required:
         - cmd
+        - data
       properties:
         cmd:
           type: string
+        games:
+          description: Optional. Game names this message is targeting
+          type: array
+          items:
+            type: string
+        slots:
+          description: Optional. Player slot IDs that this message is targeting
+          type: array
+          items:
+            type: string
+        tags:
+          description: Optional. Client Tags this message is targeting
+          type: array
+          items:
+            type: string
+        data:
+          description: The data in the Bounce package copied
+          type: object
+          additionalProperties: true
     Get:
       type: object
       description: |
@@ -571,6 +700,21 @@ components:
       properties:
         cmd:
           type: string
+        keys:
+          description: |
+            Keys to retrieve the values for.
+            Additional arguments sent in this package will also be added to the Retrieved package it triggers.
+
+            Some special keys exist with specific return data, all of them have the prefix _read_, so hints_{team}_{slot} is _read_hints_{team}_{slot}.
+            - hints_{team}_{slot} | list[Hint] | All Hints belonging to the requested Player.
+            - slot_data_{slot} | dict[str, any] | slot_data belonging to the requested slot.
+            - item_name_groups_{game_name} | dict[str, list[str]] | item_name_groups belonging to the requested game.
+            - location_name_groups_{game_name} | dict[str, list[str]] | location_name_groups belonging to the requested game.
+            - client_status_{team}_{slot} | ClientStatus | The current game status of the requested player.
+            - race_mode | int | 0 if race mode is disabled, and 1 if it's enabled.
+          type: array
+          items:
+            type: string
     Set:
       type: object
       description: |
@@ -583,6 +727,19 @@ components:
       properties:
         cmd:
           type: string
+        key:
+          description: The key to manipulate. Can never start with "_read".
+          type: string
+        default:
+          description: The default value to use in case the key has no value on the server.
+        want_reply:
+          description: If true, the server will send a SetReply response back to the client.
+          type: boolean
+        operations:
+          description: Operations to apply to the value, multiple operations can be present and they will be executed in order of appearance.
+          type: array
+          items:
+            $ref: "#/components/schemas/DataStorageOperation"
     SetNotify:
       type: object
       description: |
@@ -593,6 +750,12 @@ components:
       properties:
         cmd:
           type: string
+        keys:
+          description: |
+            Keys to receive all SetReply packages for.
+          type: array
+          items:
+            type: string
 
     ############
     # SUBTYPES #
@@ -722,6 +885,53 @@ components:
           items:
             type: integer
 
+    Hint: #TODO
+      type: object
+      description: An object representing a Hint.
+      required:
+        - receiving_player
+        - finding_player
+        - location
+        - item
+        - found
+        - entrance
+        - item_flags
+        - status
+      properties:
+        receiving_player:
+          type: integer
+        finding_player:
+          type: integer
+        location:
+          type: integer
+        item:
+          type: integer
+        found:
+          type: boolean
+        entrance:
+          type: string
+        item_flags:
+          type: integer
+        status:
+          $ref: "#/components/schemas/HintStatus"
+    DataStorageOperation:
+      type: object
+      description: |
+        A DataStorageOperation manipulates or alters the value of a key in the data storage. 
+        If the operation transforms the value from one state to another then the current 
+        value of the key is used as the starting point otherwise the Set's package default 
+        is used if the key does not exist on the server already. 
+        DataStorageOperations consist of an object containing both the operation to be applied, 
+        provided in the form of a string, as well as the value to be used for that operation
+      required:
+        - operation
+      properties:
+        operation:
+          description: the operation to be applied
+          allOf:
+            - ref: "#/components/schemas/OperationKey"
+        value:
+          description: the value used by the operation. Operation key dependant.
     #########
     # ENUMS #
     #########
@@ -944,3 +1154,128 @@ components:
         - JsonMessagePartColorMagentaBG
         - JsonMessagePartColorCyanBG
         - JsonMessagePartColorWhiteBG
+
+    ItemHandlingFlag:
+      type: integer
+      enum:
+        - 0b000
+        - 0b001
+        - 0b010
+        - 0b100
+      x-enum-varnames:
+        - ItemHandlingFlagNone
+        - ItemHandlingFlagOtherWorlds
+        - ItemHandlingFlagOwnWorld
+        - ItemHandlingFlagStartingInventory
+      x-enum-descriptions:
+        - No ReceivedItems is sent to you, ever.
+        - Indicates you get items sent from other worlds.
+        - Indicates you get items sent from your own world. Requires 0b001 to be set.
+        - Indicates you get your starting inventory sent. Requires 0b001 to be set.
+
+    HintStatus:
+      description: |
+        An enumeration containing the possible hint states.
+        Hints for items with ItemClassification.trap default to HINT_AVOID.
+        Hints created with LocationScouts, !hint_location, or similar (hinting a location) default to HINT_UNSPECIFIED.
+        Hints created with !hint or similar (hinting an item for yourself) default to HINT_PRIORITY.
+        Once a hint is collected, its' status is updated to HINT_FOUND automatically, and can no longer be changed.
+
+      type: integer
+      enum:
+        - 0
+        - 1
+        - 10
+        - 20
+        - 30
+      x-enum-varnames:
+        - HintStatusFound
+        - HintStatusUnspecified
+        - HintStatusNoPriority
+        - HintStatusAvoid
+        - HintStatusPriority
+      x-enum-descriptions:
+        - The location has been collected. Status cannot be changed once found.
+        - The receiving player has not specified any status
+        - The receiving player has specified that the item is unneeded
+        - The receiving player has specified that the item is detrimental
+        - The receiving player has specified that the item is needed
+
+    ClientStatus:
+      description: |
+        An enumeration containing the possible client states that may be used to inform the server in StatusUpdate. 
+        The MultiServer automatically sets the client state to ClientStatus.CLIENT_CONNECTED on the first active connection to a slot.
+      type: integer
+      enum:
+        - 0
+        - 5
+        - 10
+        - 20
+        - 30
+      x-enum-varnames:
+        - ClientStatusUnknown
+        - ClientStatusConnected
+        - ClientStatusReady
+        - ClientStatusPlaying
+        - ClientStatusGoal
+
+    OperationKey:
+      description: The following operations can be applied to a datastorage key
+      type: string
+      enum:
+        - replace
+        - default
+        - add
+        - mul
+        - pow
+        - mod
+        - floor
+        - ceil
+        - max
+        - min
+        - and
+        - or
+        - xor
+        - left_shift
+        - right_shift
+        - remove
+        - pop
+        - update
+      x-enum-varnames:
+        - OperationKeyReplace
+        - OperationKeyDefault
+        - OperationKeyAdd
+        - OperationKeyMul
+        - OperationKeyPow
+        - OperationKeyMod
+        - OperationKeyFloor
+        - OperationKeyCeil
+        - OperationKeyMax
+        - OperationKeyMin
+        - OperationKeyAnd
+        - OperationKeyOr
+        - OperationKeyXor
+        - OperationKeyLeftShift
+        - OperationKeyRightShift
+        - OperationKeyRemove
+        - OperationKeyPop
+        - OperationKeyUpdate
+      x-enum-descriptions:
+        - Sets the current value of the key to value.
+        - If the key has no value yet, sets the current value of the key to default of the Set's package (value is ignored).
+        - Adds value to the current value of the key, if both the current value and value are arrays then value will be appended to the current value.
+        - Multiplies the current value of the key by value.
+        - Multiplies the current value of the key to the power of value.
+        - Sets the current value of the key to the remainder after division by value.
+        - Floors the current value (value is ignored).
+        - Ceils the current value (value is ignored).
+        - Sets the current value of the key to value if value is bigger.
+        - Sets the current value of the key to value if value is lower.
+        - Applies a bitwise AND to the current value of the key with value.
+        - Applies a bitwise OR to the current value of the key with value.
+        - Applies a bitwise Exclusive OR to the current value of the key with value.
+        - Applies a bitwise left-shift to the current value of the key by value.
+        - Applies a bitwise right-shift to the current value of the key by value.
+        - "List only: removes the first instance of value found in the list."
+        - "List or Dict: for lists it will remove the index of the value given. for dicts it removes the element with the specified key of value."
+        - "Dict only: Updates the dictionary with the specified elements given in value creating new keys, or updating old ones if they previously existed."

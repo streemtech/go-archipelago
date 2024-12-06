@@ -10,6 +10,15 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
+// Defines values for ClientStatus.
+const (
+	ClientStatusConnected ClientStatus = 5
+	ClientStatusGoal      ClientStatus = 30
+	ClientStatusPlaying   ClientStatus = 20
+	ClientStatusReady     ClientStatus = 10
+	ClientStatusUnknown   ClientStatus = 0
+)
+
 // Defines values for ConnectionRefusedError.
 const (
 	ConnectionRefusedIncompatibleVersion  ConnectionRefusedError = "IncompatibleVersion"
@@ -17,6 +26,23 @@ const (
 	ConnectionRefusedInvalidItemsHandling ConnectionRefusedError = "InvalidItemsHandling"
 	ConnectionRefusedInvalidPassword      ConnectionRefusedError = "InvalidPassword"
 	ConnectionRefusedInvalidSlot          ConnectionRefusedError = "InvalidSlot"
+)
+
+// Defines values for HintStatus.
+const (
+	HintStatusAvoid       HintStatus = 20
+	HintStatusFound       HintStatus = 0
+	HintStatusNoPriority  HintStatus = 10
+	HintStatusPriority    HintStatus = 30
+	HintStatusUnspecified HintStatus = 1
+)
+
+// Defines values for ItemHandlingFlag.
+const (
+	ItemHandlingFlagNone              ItemHandlingFlag = 0
+	ItemHandlingFlagOtherWorlds       ItemHandlingFlag = 1
+	ItemHandlingFlagOwnWorld          ItemHandlingFlag = 2
+	ItemHandlingFlagStartingInventory ItemHandlingFlag = 4
 )
 
 // Defines values for JSONMessagePartColor.
@@ -60,6 +86,28 @@ const (
 	NetworkItemFlagImportant          NetworkItemFlags = 2
 	NetworkItemFlagLogicalAdvancement NetworkItemFlags = 1
 	NetworkItemFlagTrap               NetworkItemFlags = 4
+)
+
+// Defines values for OperationKey.
+const (
+	OperationKeyAdd        OperationKey = "add"
+	OperationKeyAnd        OperationKey = "and"
+	OperationKeyCeil       OperationKey = "ceil"
+	OperationKeyDefault    OperationKey = "default"
+	OperationKeyFloor      OperationKey = "floor"
+	OperationKeyLeftShift  OperationKey = "left_shift"
+	OperationKeyMax        OperationKey = "max"
+	OperationKeyMin        OperationKey = "min"
+	OperationKeyMod        OperationKey = "mod"
+	OperationKeyMul        OperationKey = "mul"
+	OperationKeyOr         OperationKey = "or"
+	OperationKeyPop        OperationKey = "pop"
+	OperationKeyPow        OperationKey = "pow"
+	OperationKeyRemove     OperationKey = "remove"
+	OperationKeyReplace    OperationKey = "replace"
+	OperationKeyRightShift OperationKey = "right_shift"
+	OperationKeyUpdate     OperationKey = "update"
+	OperationKeyXor        OperationKey = "xor"
 )
 
 // Defines values for PacketProblemType.
@@ -108,6 +156,18 @@ const (
 // to which any one requirement applies.
 type Bounce struct {
 	Cmd string `json:"cmd"`
+
+	// Data The data in the Bounce package copied
+	Data map[string]interface{} `json:"data"`
+
+	// Games Optional. Game names this message is targeting
+	Games *[]string `json:"games,omitempty"`
+
+	// Slots Optional. Player slot IDs that this message is targeting
+	Slots *[]string `json:"slots,omitempty"`
+
+	// Tags Optional. Client Tags this message is targeting
+	Tags *[]string `json:"tags,omitempty"`
 }
 
 // Bounced Sent to clients after a client requested this message be sent to them, more info in the Bounce package.
@@ -127,6 +187,10 @@ type Bounced struct {
 	Tags *[]string `json:"tags,omitempty"`
 }
 
+// ClientStatus An enumeration containing the possible client states that may be used to inform the server in StatusUpdate.
+// The MultiServer automatically sets the client state to ClientStatus.CLIENT_CONNECTED on the first active connection to a slot.
+type ClientStatus int
+
 // Command defines model for Command.
 type Command struct {
 	union json.RawMessage
@@ -138,11 +202,41 @@ type Commands = []Command
 // Connect Sent by the client to initiate a connection to an Archipelago game session.
 type Connect struct {
 	Cmd string `json:"cmd"`
+
+	// Game The name of the game the client is playing. Example: A Link to the Past
+	Game string `json:"game"`
+
+	// ItemsHandling Flags configuring which items should be sent by the server. Read below for individual flags.
+	ItemsHandling ItemHandlingFlag `json:"items_handling"`
+
+	// Name The player name for this client.
+	Name string `json:"name"`
+
+	// Password If the game session requires a password, it should be passed here.
+	Password string `json:"password"`
+
+	// SlotData If true, the Connect answer will contain slot_data
+	SlotData bool `json:"slot_data"`
+
+	// Tags Denotes special features or capabilities that the sender is capable of. Tags
+	Tags []string `json:"tags"`
+
+	// Uuid Unique identifier for player client.
+	Uuid string `json:"uuid"`
+
+	// Version An object representing the Archipelago version this client supports.
+	Version NetworkVersion `json:"version"`
 }
 
 // ConnectUpdate Update arguments from the Connect package, currently only updating tags and items_handling is supported.
 type ConnectUpdate struct {
 	Cmd string `json:"cmd"`
+
+	// ItemsHandling Flags configuring which items should be sent by the server.
+	ItemsHandling ItemHandlingFlag `json:"items_handling"`
+
+	// Tags Denotes special features or capabilities that the sender is capable of. Tags
+	Tags []string `json:"tags"`
 }
 
 // Connected Sent to clients when the connection handshake is successfully completed.
@@ -197,18 +291,72 @@ type DataPackage struct {
 	Data JSONMessagePart `json:"data"`
 }
 
+// DataStorageOperation A DataStorageOperation manipulates or alters the value of a key in the data storage.
+// If the operation transforms the value from one state to another then the current
+// value of the key is used as the starting point otherwise the Set's package default
+// is used if the key does not exist on the server already.
+// DataStorageOperations consist of an object containing both the operation to be applied,
+// provided in the form of a string, as well as the value to be used for that operation
+type DataStorageOperation struct {
+	// Operation the operation to be applied
+	Operation interface{} `json:"operation"`
+
+	// Value the value used by the operation. Operation key dependant.
+	Value *interface{} `json:"value,omitempty"`
+}
+
 // Get Used to request a single or multiple values from the server's data
 // storage, see the Set package for how to write values to the data storage.
 // A Get package will be answered with a Retrieved package.
 type Get struct {
 	Cmd string `json:"cmd"`
+
+	// Keys Keys to retrieve the values for.
+	// Additional arguments sent in this package will also be added to the Retrieved package it triggers.
+	//
+	// Some special keys exist with specific return data, all of them have the prefix _read_, so hints_{team}_{slot} is _read_hints_{team}_{slot}.
+	// - hints_{team}_{slot} | list[Hint] | All Hints belonging to the requested Player.
+	// - slot_data_{slot} | dict[str, any] | slot_data belonging to the requested slot.
+	// - item_name_groups_{game_name} | dict[str, list[str]] | item_name_groups belonging to the requested game.
+	// - location_name_groups_{game_name} | dict[str, list[str]] | location_name_groups belonging to the requested game.
+	// - client_status_{team}_{slot} | ClientStatus | The current game status of the requested player.
+	// - race_mode | int | 0 if race mode is disabled, and 1 if it's enabled.
+	Keys *[]string `json:"keys,omitempty"`
 }
 
 // GetDataPackage Requests the data package from the server.
 // Does not require client authentication.
 type GetDataPackage struct {
 	Cmd string `json:"cmd"`
+
+	// Games If specified, will only send back the specified data. Such as, ["Factorio"] -> Datapackage with only Factorio data.
+	Games *[]string `json:"games,omitempty"`
 }
+
+// Hint An object representing a Hint.
+type Hint struct {
+	Entrance        string `json:"entrance"`
+	FindingPlayer   int    `json:"finding_player"`
+	Found           bool   `json:"found"`
+	Item            int    `json:"item"`
+	ItemFlags       int    `json:"item_flags"`
+	Location        int    `json:"location"`
+	ReceivingPlayer int    `json:"receiving_player"`
+
+	// Status An enumeration containing the possible hint states.
+	// Hints for items with ItemClassification.trap default to HINT_AVOID.
+	// Hints created with LocationScouts, !hint_location, or similar (hinting a location) default to HINT_UNSPECIFIED.
+	// Hints created with !hint or similar (hinting an item for yourself) default to HINT_PRIORITY.
+	// Once a hint is collected, its' status is updated to HINT_FOUND automatically, and can no longer be changed.
+	Status HintStatus `json:"status"`
+}
+
+// HintStatus An enumeration containing the possible hint states.
+// Hints for items with ItemClassification.trap default to HINT_AVOID.
+// Hints created with LocationScouts, !hint_location, or similar (hinting a location) default to HINT_UNSPECIFIED.
+// Hints created with !hint or similar (hinting an item for yourself) default to HINT_PRIORITY.
+// Once a hint is collected, its' status is updated to HINT_FOUND automatically, and can no longer be changed.
+type HintStatus int
 
 // InvalidPacket Sent to clients if the server caught a problem with a packet.
 // This only occurs for errors that are explicitly checked for.
@@ -224,6 +372,9 @@ type InvalidPacket struct {
 	// Type The PacketProblemType that was detected in the packet.
 	Type PacketProblemType `json:"type"`
 }
+
+// ItemHandlingFlag defines model for ItemHandlingFlag.
+type ItemHandlingFlag int
 
 // JSONMessagePart Message nodes sent along with PrintJSON packet to be reconstructed into a legible message.
 // The nodes are intended to be read in the order they are listed in the packet.
@@ -254,9 +405,15 @@ type JSONMessagePartColor string
 // Other clients may choose to interpret and display these messages differently.
 type JSONMessagePartType string
 
-// LocationChecks Sent to server to inform it of locations that the client has checked. Used to inform the server of new checks that are made, as well as to sync state.
+// LocationChecks Sent to server to inform it of locations that the client has checked.
+// Used to inform the server of new checks that are made, as well as to sync state.
 type LocationChecks struct {
 	Cmd string `json:"cmd"`
+
+	// Locations The ids of the locations checked by the client.
+	// May contain any number of checks, even ones sent before;
+	// duplicates do not cause issues with the Archipelago server.
+	Locations []int `json:"locations"`
 }
 
 // LocationInfo Sent to clients to acknowledge a received LocationScouts packet and
@@ -282,6 +439,15 @@ type LocationInfo struct {
 // To do this, set the create_as_hint parameter to a non-zero value.
 type LocationScouts struct {
 	Cmd string `json:"cmd"`
+
+	// CreateAsHint If non-zero, the scouted locations get created and broadcasted as a player-visible hint.
+	// If 2 only new hints are broadcast, however this does not remove them from the LocationInfo reply.
+	CreateAsHint *int `json:"create_as_hint,omitempty"`
+
+	// Locations The ids of the locations seen by the client.
+	// May contain any number of locations, even ones sent before;
+	// duplicates do not cause issues with the Archipelago server.
+	Locations []int `json:"locations"`
 }
 
 // NetworkItem Items that are sent over the net (in packets) use the following data structure and are sent as objects:
@@ -355,6 +521,9 @@ type NetworkVersion struct {
 	Major *int `json:"major,omitempty"`
 	Minor *int `json:"minor,omitempty"`
 }
+
+// OperationKey The following operations can be applied to a datastorage key
+type OperationKey string
 
 // PacketProblemType defines model for PacketProblemType.
 type PacketProblemType string
@@ -516,6 +685,9 @@ type RoomUpdate struct {
 // Say Basic chat command which sends text to the server to be distributed to other clients.
 type Say struct {
 	Cmd string `json:"cmd"`
+
+	// Text Text to send to others.
+	Text string `json:"text"`
 }
 
 // Set Used to write data to the server's data storage, that data can then
@@ -524,12 +696,27 @@ type Say struct {
 // with a SetNotify package. Keys that start with _read_ cannot be set.
 type Set struct {
 	Cmd string `json:"cmd"`
+
+	// Default The default value to use in case the key has no value on the server.
+	Default *interface{} `json:"default,omitempty"`
+
+	// Key The key to manipulate. Can never start with "_read".
+	Key *string `json:"key,omitempty"`
+
+	// Operations Operations to apply to the value, multiple operations can be present and they will be executed in order of appearance.
+	Operations *[]DataStorageOperation `json:"operations,omitempty"`
+
+	// WantReply If true, the server will send a SetReply response back to the client.
+	WantReply *bool `json:"want_reply,omitempty"`
 }
 
 // SetNotify Used to register your current session for receiving all SetReply
 // packages of certain keys to allow your client to keep track of changes.
 type SetNotify struct {
 	Cmd string `json:"cmd"`
+
+	// Keys Keys to receive all SetReply packages for.
+	Keys *[]string `json:"keys,omitempty"`
 }
 
 // SetReply Sent to clients in response to a Set package if want_reply was set to true,
@@ -559,6 +746,9 @@ type SlotType int
 // (Example: defeated Ganon in A Link to the Past)
 type StatusUpdate struct {
 	Cmd string `json:"cmd"`
+
+	// Status One of Client States. Send as int. Follow the link for more information.
+	Status ClientStatus `json:"status"`
 }
 
 // Sync Sent to server to request a ReceivedItems packet to synchronize items.
@@ -571,6 +761,15 @@ type Sync struct {
 // or the update fails.
 type UpdateHint struct {
 	Cmd string `json:"cmd"`
+
+	// Location The ID of the location to update the hint for. If no hint exists for this location, the packet is ignored.
+	Location int `json:"location"`
+
+	// Player The ID of the player whose location is being hinted for.
+	Player int `json:"player"`
+
+	// Status If included, sets the status of the hint to this status. Cannot set HINT_FOUND, or change the status from HINT_FOUND.
+	Status *HintStatus `json:"status,omitempty"`
 }
 
 // AsRoomInfo returns the union data inside the Command as a RoomInfo
