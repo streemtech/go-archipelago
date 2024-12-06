@@ -6,6 +6,7 @@ require (
 	github.com/coder/websocket v1.8.12
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/oapi-codegen/runtime v1.1.1
+	github.com/pkg/errors v0.9.1
 )
 
 require (
