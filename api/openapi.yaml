@@ -50,6 +50,28 @@ components:
         permissions:
           description: |
             Mapping of permission name to Permission, keys are: "release", "collect" and "remaining".
+
+            ## release
+            Dictates what is allowed when it comes to a player releasing their run. A release is an action which distributes the rest of the items in a player's run to those other players awaiting them.
+                auto: Distributes a player's items to other players when they complete their goal.
+                enabled: Denotes that players may release at any time in the game.
+                auto-enabled: Both of the above options together.
+                disabled: All release modes disabled.
+                goal: Allows for manual use of release command once a player completes their goal. (Disabled until goal completion)
+
+            ## collect
+            Dictates what is allowed when it comes to a player collecting their run. A collect is an action which sends the rest of the items in a player's run.
+                auto: Automatically when they complete their goal.
+                enabled: Denotes that players may !collect at any time in the game.
+                auto-enabled: Both of the above options together.
+                disabled: All collect modes disabled.
+                goal: Allows for manual use of collect command once a player completes their goal. (Disabled until goal completion)
+
+            ## remaining
+            Dictates what is allowed when it comes to a player querying the items remaining in their run.
+                goal: Allows a player to query for items remaining in their run but only after they completed their own goal.
+                enabled: Denotes that players may query for any items remaining in their run (even those belonging to other players).
+                disabled: All remaining item query modes disabled.
           allOf:
             - $ref: "#/components/schemas/Permission"
 
@@ -86,23 +108,110 @@ components:
       description: |
         Sent to clients when the server refuses connection. 
         This is sent during the initial connection handshake.
+      properties:
+        errors:
+          description: |
+            Optional. When provided, should contain any one of: 
+            InvalidSlot, InvalidGame, IncompatibleVersion, InvalidPassword, or InvalidItemsHandling.
+          type: array
+          items:
+            $ref: "#/components/schemas/ConnectionRefusedError"
     Connected:
       type: object
       description: |
         Sent to clients when the connection handshake is successfully completed.
+      required:
+        - team
+        - slot
+        - players
+        - missing_locations
+        - checked_locations
+        - slot_data
+        - slot_info
+        - hint_points
+      properties:
+        team:
+          description: Your team number. See NetworkPlayer for more info on team number.
+          type: integer
+        slot:
+          description: Your slot number on your team. See NetworkPlayer for more info on the slot number.
+          type: integer
+        players:
+          description: List denoting other players in the multiworld, whether connected or not.
+          type: array
+          items:
+            $ref: "#/components/schemas/NetworkPlayer"
+        missing_locations:
+          description: Contains ids of remaining locations that need to be checked. Useful for trackers, among other things.
+          type: array
+          items:
+            type: integer
+        checked_locations:
+          description: Contains ids of all locations that have been checked. Useful for trackers, among other things. Location ids are in the range of ± 253-1.
+          type: array
+          items:
+            type: integer
+        slot_data:
+          description: Contains a json object for slot related data, differs per game. Empty if not required. Not present if slot_data in Connect is false.
+          type: object
+          additionalProperties: true
+        slot_info:
+          description: maps each slot to a NetworkSlot information.
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/NetworkSlot"
+          x-go-type: map[int]NetworkSlot
+        hint_points:
+          description: Number of hint points that the current player has.
+          type: integer
     ReceivedItems:
       type: object
       description: |
         Sent to clients when they receive an item.
+      required:
+        - index
+        - items
+      properties:
+        index:
+          description: The next empty slot in the list of items for the receiving client.
+          type: integer
+        items:
+          description: The items which the client is receiving.
+          type: array
+          items:
+            $ref: "#/components/schemas/NetworkItem"
     LocationInfo:
       type: object
       description: |
         Sent to clients to acknowledge a received LocationScouts packet and 
         responds with the item in the location(s) being scouted.
+      required:
+        - locations
+      properties:
+        locations:
+          description: Contains list of item(s) in the location(s) scouted
+          type: array
+          items:
+            $ref: "#/components/schemas/NetworkItem"
     RoomUpdate:
       type: object
       description: |
         Sent when there is a need to update information about the present game session.
+        All arguments for this packet are optional, only changes are sent.
+      properties:
+        players:
+          description: Sent in the event of an alias rename. Always sends all players, whether connected or not.
+          type: array
+          items:
+            $ref: "#/components/schemas/NetworkPlayer"
+        checked_locations:
+          description: May be a partial update, containing new locations that were checked, especially from a coop partner in the same slot.
+          type: array
+          items:
+            type: integer
+        missing_locations:
+          description: Never sent in this packet. If needed, it is the inverse of checked_locations.
+          type: object
     PrintJSON:
       type: object
       description: |
@@ -111,6 +220,65 @@ components:
         clients only need to evaluate the data argument to construct 
         the human-readable message text. 
         All other arguments may be ignored safely.
+      required:
+        - data
+      properties:
+        data:
+          description: |
+            Message Type: (all)
+            Textual content of this message
+          type: array
+          items:
+            $ref: "#/components/schemas/JSONMessagePart"
+        type:
+          description: |
+            Message Type: (all)
+            PrintJsonType of this message (optional)
+          allOf:
+            - $ref: "#/components/schemas/PrintJsonType"
+        receiving:
+          description: |
+            Message Type: ItemSend, ItemCheat, Hint
+            Destination player's ID
+          type: integer
+        item:
+          description: |
+            Message Type: NetworkItem 	ItemSend, ItemCheat, Hint
+            Source player's ID, location ID, item ID and item flags
+          allOf:
+            - $ref: "#/components/schemas/NetworkItem"
+        found:
+          description: |
+            Message Type: Hint
+            Whether the location hinted for was checked
+          type: boolean
+        team:
+          description: |
+            Message Type: Join, Part, Chat, TagsChanged, Goal, Release, Collect, ItemCheat
+            Team of the triggering player
+          type: integer
+        slot:
+          description: |
+            Message Type: Join, Part, Chat, TagsChanged, Goal, Release, Collect
+            Slot of the triggering player
+          type: integer
+        message:
+          description: |
+            Message Type: Chat, ServerChat
+            Original chat message without sender prefix
+          type: string
+        tags:
+          description: |
+            Message Type: Join, TagsChanged
+            Tags of the triggering player
+          type: array
+          items:
+            type: string
+        countdown:
+          description: |
+            Message Type: Countdown
+            Amount of seconds remaining on the countdown
+          type: integer
     DataPackage:
       type: object
       description: |
@@ -257,3 +425,96 @@ components:
         - 2, allows manual use after goal completion
         - 6, forces use after goal completion, only works for release and collect
         - 7, forces use after goal completion, allows manual use any time
+    ConnectionRefusedError:
+      type: string
+      description: The potential error values that can be returned in the list of errors in a connection refused.
+      enum:
+        - InvalidSlot
+        - InvalidGame
+        - IncompatibleVersion
+        - InvalidPassword
+        - InvalidItemsHandling
+      x-enum-varnames:
+        - ConnectionRefusedInvalidSlot
+        - ConnectionRefusedInvalidGame
+        - ConnectionRefusedIncompatibleVersion
+        - ConnectionRefusedInvalidPassword
+        - ConnectionRefusedInvalidItemsHandling
+      x-enum-descriptions:
+        - InvalidSlot is returned as a connection refused error when the slot was invalid
+        - InvalidGame is returned as a connection refused error when the game was invalid
+        - IncompatibleVersion is returned as a connection refused error when the versions were incompatible
+        - InvalidPassword is returned as a connection refused error when the password was incorrect
+        - InvalidItemsHandling is returned as a connection refused error when there was a error with item handling
+    PrintJsonType:
+      description: |
+        PrintJsonType indicates the type of a PrintJSON packet. 
+        Different types can be handled differently by the client and can also contain additional arguments. 
+        When receiving an unknown or missing type, the data's list[JSONMessagePart] should still be displayed to the player as normal text.
+      type: string
+      enum:
+        - ItemSend
+        - ItemCheat
+        - Hint
+        - Join
+        - Part
+        - Chat
+        - ServerChat
+        - Tutorial
+        - TagsChanged
+        - CommandResult
+        - AdminCommandResult
+        - Goal
+        - Release
+        - Collect
+        - Countdown
+      x-enum-descriptions:
+        - A player received an item.
+        - A player used the !getitem command.
+        - A player hinted.
+        - A player connected.
+        - A player disconnected.
+        - A player sent a chat message.
+        - The server broadcasted a message.
+        - The client has triggered a tutorial message, such as when first connecting.
+        - A player changed their tags.
+        - Someone (usually the client) entered an ! command.
+        - The client entered an !admin command.
+        - A player reached their goal.
+        - A player released the remaining items in their world.
+        - A player collected the remaining items for their world.
+        - The current server countdown has progressed.
+      x-enum-varnames:
+        - PrintJsonTypeItemSend
+        - PrintJsonTypeItemCheat
+        - PrintJsonTypeHint
+        - PrintJsonTypeJoin
+        - PrintJsonTypePart
+        - PrintJsonTypeChat
+        - PrintJsonTypeServerChat
+        - PrintJsonTypeTutorial
+        - PrintJsonTypeTagsChanged
+        - PrintJsonTypeCommandResult
+        - PrintJsonTypeAdminCommandResult
+        - PrintJsonTypeGoal
+        - PrintJsonTypeRelease
+        - PrintJsonTypeCollect
+        - PrintJsonTypeCountdown
+    JSONMessagePart:
+      type: object
+      # type: Optional[str]
+      # text: Optional[str]
+      # color: Optional[str] # only available if type is a color
+      # flags: Optional[int] # only available if type is an item_id or item_name
+      # player: Optional[int] # only available if type is either item or location
+    NetworkPlayer: #TODO
+      type: object
+    NetworkItem: #TODO
+      type: object
+    NetworkSlot: #TODO
+      type: object
+      # properties:
+      #   name: str
+      #   game: str
+      #   type: SlotType
+      #   group_members: typing.List[int] = []  # only populated if type == group
