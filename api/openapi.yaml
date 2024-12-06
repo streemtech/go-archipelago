@@ -1,0 +1,259 @@
+openapi: "3.1.0"
+info:
+  title: Archipelago API
+  version: "1.0"
+servers:
+  - url: wss://archipelago.gg
+
+components:
+  schemas:
+    ####################
+    # SERVER -> CLIENT #
+    ####################
+    RoomInfo:
+      type: object
+      description: |
+        Sent to clients when they connect to an Archipelago server.
+      required:
+        - version
+        - generator_version
+        - tags
+        - password
+        - permissions
+        - hint_cost
+        - location_check_points
+        - games
+        - datapackage_checksums
+        - seed_name
+        - time
+      properties:
+        version:
+          description: |
+            Object denoting the version of Archipelago which the server is running.
+          allOf:
+            - $ref: "#/components/schemas/NetworkVersion"
+        generator_version:
+          description: |
+            Object denoting the version of Archipelago which generated the multiworld.
+          allOf:
+            - $ref: "#/components/schemas/NetworkVersion"
+        tags:
+          description: |
+            Denotes special features or capabilities that the sender is capable of. Example: WebHost
+          type: array
+          items:
+            type: string
+        password:
+          description: |
+            Denoted whether a password is required to join this room.
+          type: boolean
+        permissions:
+          description: |
+            Mapping of permission name to Permission, keys are: "release", "collect" and "remaining".
+          allOf:
+            - $ref: "#/components/schemas/Permission"
+
+        hint_cost:
+          description: |
+            The percentage of total locations that need to be checked to receive a hint from the server.
+          type: integer
+        location_check_points:
+          description: |
+            The amount of hint points you receive per item/location check completed.
+          type: integer
+        games:
+          description: |
+            List of games present in this multiworld.
+          type: array
+          items:
+            type: string
+        datapackage_checksums:
+          description: |
+            Checksum hash of the individual games' data packages the server will send. Used by newer clients to decide which games' caches are outdated. See Data Package Contents for more information.
+          type: object
+          additionalProperties:
+            type: string
+        seed_name:
+          description: |
+            Uniquely identifying name of this generation
+          type: string
+        time:
+          description: |
+            Unix time stamp of "now". Send for time synchronization if wanted for things like the DeathLink Bounce.
+          type: number
+    ConnectionRefused:
+      type: object
+      description: |
+        Sent to clients when the server refuses connection. 
+        This is sent during the initial connection handshake.
+    Connected:
+      type: object
+      description: |
+        Sent to clients when the connection handshake is successfully completed.
+    ReceivedItems:
+      type: object
+      description: |
+        Sent to clients when they receive an item.
+    LocationInfo:
+      type: object
+      description: |
+        Sent to clients to acknowledge a received LocationScouts packet and 
+        responds with the item in the location(s) being scouted.
+    RoomUpdate:
+      type: object
+      description: |
+        Sent when there is a need to update information about the present game session.
+    PrintJSON:
+      type: object
+      description: |
+        Sent to clients purely to display a message to the player. 
+        While various message types provide additional arguments, 
+        clients only need to evaluate the data argument to construct 
+        the human-readable message text. 
+        All other arguments may be ignored safely.
+    DataPackage:
+      type: object
+      description: |
+        Sent to clients to provide what is known as a 'data package' which contains 
+        information to enable a client to most easily communicate with the Archipelago server. 
+        Contents include things like location id to name mappings, 
+        among others; see Data Package Contents for more info.
+    Bounced:
+      type: object
+      description: |
+        Sent to clients after a client requested this message be sent to them, more info in the Bounce package.
+    InvalidPacket:
+      type: object
+      description: |
+        Sent to clients if the server caught a problem with a packet. 
+        This only occurs for errors that are explicitly checked for.
+    Retrieved:
+      type: object
+      description: |
+        Sent to clients as a response the a Get package.
+    SetReply:
+      type: object
+      description: |
+        Sent to clients in response to a Set package if want_reply was set to true, 
+        or if the client has registered to receive updates for a certain key using 
+        the SetNotify package. SetReply packages are sent even if a Set package 
+        did not alter the value for the key.
+    ####################
+    # CLIENT -> SERVER #
+    ####################
+
+    Connect:
+      type: object
+      description: |
+        Sent by the client to initiate a connection to an Archipelago game session.
+    ConnectUpdate:
+      type: object
+      description: |
+        Update arguments from the Connect package, currently only updating tags and items_handling is supported.
+    Sync:
+      type: object
+      description: |
+        Sent to server to request a ReceivedItems packet to synchronize items.
+    LocationChecks:
+      type: object
+      description: |
+        Sent to server to inform it of locations that the client has checked. Used to inform the server of new checks that are made, as well as to sync state.
+    LocationScouts:
+      type: object
+      description: |
+        Sent to the server to retrieve the items that are on a specified list of locations. 
+        The server will respond with a LocationInfo packet containing the items located in the
+        scouted locations. Fully remote clients without a patch file may use this to 
+        "place" items onto their in-game locations, most commonly to display their 
+        names or item classifications before/upon pickup.
+
+        LocationScouts can also be used to inform the server of 
+        locations the client has seen, but not checked. 
+        This creates a hint as if the player had run !hint_location on a location, 
+        but without deducting hint points. This is useful in cases where an item appears 
+        in the game world, such as 'ledge items' in A Link to the Past. 
+        To do this, set the create_as_hint parameter to a non-zero value.
+    UpdateHint:
+      type: object
+      description: |
+        Sent to the server to update the status of a Hint. 
+        The client must be the 'receiving_player' of the Hint, 
+        or the update fails.
+    StatusUpdate:
+      type: object
+      description: |
+        Sent to the server to update on the sender's status. 
+        Examples include readiness or goal completion. 
+        (Example: defeated Ganon in A Link to the Past)
+    Say:
+      type: object
+      description: |
+        Basic chat command which sends text to the server to be distributed to other clients.
+    GetDataPackage:
+      type: object
+      description: |
+        Requests the data package from the server. 
+        Does not require client authentication.
+    Bounce:
+      type: object
+      description: |
+        Send this message to the server, tell it which clients should receive 
+        the message and the server will forward the message to all those targets 
+        to which any one requirement applies.
+    Get:
+      type: object
+      description: |
+        Used to request a single or multiple values from the server's data 
+        storage, see the Set package for how to write values to the data storage. 
+        A Get package will be answered with a Retrieved package.
+    Set:
+      type: object
+      description: |
+        Used to write data to the server's data storage, that data can then 
+        be shared across worlds or just saved for later. Values for keys 
+        in the data storage can be retrieved with a Get package, or monitored 
+        with a SetNotify package. Keys that start with _read_ cannot be set.
+    SetNotify:
+      type: object
+      description: |
+        Used to register your current session for receiving all SetReply 
+        packages of certain keys to allow your client to keep track of changes.
+
+    ############
+    # SUBTYPES #
+    ############
+
+    NetworkVersion:
+      type: object
+      description:
+        An object representing software versioning. Used in the Connect packet to
+        allow the client to inform the server of the Archipelago version it supports.
+      properties:
+        major:
+          type: integer
+        minor:
+          type: integer
+        build:
+          type: integer
+    Permission:
+      type: integer
+      description: |
+        An enumeration containing the possible command permission, for commands that may be restricted.
+      enum:
+        - 0b000
+        - 0b001
+        - 0b010
+        - 0b110
+        - 0b111
+      x-enum-varnames:
+        - PermissionDisabled
+        - PermissionEnabled
+        - PermissionGoal
+        - PermissionAuto
+        - PermissionAutoEnabled
+      x-enum-descriptions:
+        - 0, completely disables access
+        - 1, allows manual use
+        - 2, allows manual use after goal completion
+        - 6, forces use after goal completion, only works for release and collect
+        - 7, forces use after goal completion, allows manual use any time
