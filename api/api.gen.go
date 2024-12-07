@@ -19,6 +19,35 @@ const (
 	ClientStatusUnknown   ClientStatus = 0
 )
 
+// Defines values for CommandKeys.
+const (
+	CommandKeyBounce            CommandKeys = "Bounce"
+	CommandKeyBounced           CommandKeys = "Bounced"
+	CommandKeyConnect           CommandKeys = "Connect"
+	CommandKeyConnectUpdate     CommandKeys = "ConnectUpdate"
+	CommandKeyConnected         CommandKeys = "Connected"
+	CommandKeyConnectionRefused CommandKeys = "ConnectionRefused"
+	CommandKeyDataPackage       CommandKeys = "DataPackage"
+	CommandKeyGet               CommandKeys = "Get"
+	CommandKeyGetDataPackage    CommandKeys = "GetDataPackage"
+	CommandKeyInvalidPacket     CommandKeys = "InvalidPacket"
+	CommandKeyLocationChecks    CommandKeys = "LocationChecks"
+	CommandKeyLocationInfo      CommandKeys = "LocationInfo"
+	CommandKeyLocationScouts    CommandKeys = "LocationScouts"
+	CommandKeyPrintJSON         CommandKeys = "PrintJSON"
+	CommandKeyReceivedItems     CommandKeys = "ReceivedItems"
+	CommandKeyRetrieved         CommandKeys = "Retrieved"
+	CommandKeyRoomInfo          CommandKeys = "RoomInfo"
+	CommandKeyRoomUpdate        CommandKeys = "RoomUpdate"
+	CommandKeySay               CommandKeys = "Say"
+	CommandKeySet               CommandKeys = "Set"
+	CommandKeySetNotify         CommandKeys = "SetNotify"
+	CommandKeySetReply          CommandKeys = "SetReply"
+	CommandKeyStatusUpdate      CommandKeys = "StatusUpdate"
+	CommandKeySync              CommandKeys = "Sync"
+	CommandKeyUpdateHint        CommandKeys = "UpdateHint"
+)
+
 // Defines values for ConnectionRefusedError.
 const (
 	ConnectionRefusedIncompatibleVersion  ConnectionRefusedError = "IncompatibleVersion"
@@ -204,6 +233,9 @@ type ClientStatus int
 type Command struct {
 	union json.RawMessage
 }
+
+// CommandKeys they value that can be passed in the cmd part of the command
+type CommandKeys string
 
 // Commands defines model for Commands.
 type Commands = []Command

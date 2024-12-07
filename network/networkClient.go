@@ -11,6 +11,7 @@ import (
 )
 
 type Client interface {
+	Start() (err error)
 	//Send a command to the websocket/archipelago server.
 	SendCommand(api.Commands) (err error)
 	//close the connection to the websocket/archipelago server.
@@ -29,7 +30,14 @@ type ClientImpl struct {
 	//May contain an error if the close was triggered by a send error
 	closeCallback func(err error)
 
+	dialOpts *websocket.DialOptions
+
 	closed bool
+
+	//The primary websocket url to connect to.
+	url string
+
+	readLimit int64
 }
 
 type ClientProps struct {
@@ -88,35 +96,40 @@ func NewClient(props ClientProps) (client Client, err error) {
 		httpClient = http.DefaultClient
 	}
 
-	conn, _, err := websocket.Dial(rootCtx, props.Url, &websocket.DialOptions{
-		HTTPClient: httpClient,
-		HTTPHeader: props.HTTPHeader,
-		Host:       props.Host,
-	})
-
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to dial archipelago server")
-	}
-
 	ci := &ClientImpl{
-		conn:             conn,
+		readLimit:        -1,
 		commandsCallback: props.CommandsCallback,
 		closeCallback:    props.CloseCallback,
 		rootCtx:          rootCtx,
+		dialOpts: &websocket.DialOptions{
+			HTTPClient: httpClient,
+			HTTPHeader: props.HTTPHeader,
+			Host:       props.Host,
+		},
+		url: props.Url,
 	}
-
-	ci.startReader()
 
 	return ci, nil
 
 }
 
-func (ci *ClientImpl) startReader() {
+func (ci *ClientImpl) Start() (err error) {
+
+	conn, _, err := websocket.Dial(ci.rootCtx, ci.url, ci.dialOpts)
+	conn.SetReadLimit(ci.readLimit)
+
+	if err != nil {
+		return errors.Wrap(err, "failed to dial archipelago server")
+	}
+
+	ci.conn = conn
+
 	go func() {
 		for {
 			//read in something from the websocket
 			_, data, readErr := ci.conn.Read(ci.rootCtx)
 			if readErr != nil {
+
 				if !ci.closed {
 					ci.closed = true
 					ci.conn.Close(websocket.StatusGoingAway, "read-error")
@@ -149,6 +162,8 @@ func (ci *ClientImpl) startReader() {
 			}
 		}
 	}()
+
+	return nil
 }
 
 // sends a command to hte users callback to parse
@@ -166,6 +181,7 @@ func (ci *ClientImpl) sendCommandsToUser(cmds api.Commands) {
 func (ci *ClientImpl) SendCommand(cmds api.Commands) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
+			err = errors.Errorf("recovered sending command: %v", r)
 		}
 	}()
 

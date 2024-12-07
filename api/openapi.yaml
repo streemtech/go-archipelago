@@ -1285,6 +1285,62 @@ components:
         - ClientStatusPlaying
         - ClientStatusGoal
 
+    CommandKeys:
+      description: they value that can be passed in the cmd part of the command
+      type: string
+      enum:
+        - RoomInfo
+        - ConnectionRefused
+        - Connected
+        - ReceivedItems
+        - LocationInfo
+        - RoomUpdate
+        - PrintJSON
+        - DataPackage
+        - Bounced
+        - InvalidPacket
+        - Retrieved
+        - SetReply
+        - Connect
+        - ConnectUpdate
+        - Sync
+        - LocationChecks
+        - LocationScouts
+        - UpdateHint
+        - StatusUpdate
+        - Say
+        - GetDataPackage
+        - Bounce
+        - Get
+        - Set
+        - SetNotify
+      x-enum-varnames:
+        - CommandKeyRoomInfo
+        - CommandKeyConnectionRefused
+        - CommandKeyConnected
+        - CommandKeyReceivedItems
+        - CommandKeyLocationInfo
+        - CommandKeyRoomUpdate
+        - CommandKeyPrintJSON
+        - CommandKeyDataPackage
+        - CommandKeyBounced
+        - CommandKeyInvalidPacket
+        - CommandKeyRetrieved
+        - CommandKeySetReply
+        - CommandKeyConnect
+        - CommandKeyConnectUpdate
+        - CommandKeySync
+        - CommandKeyLocationChecks
+        - CommandKeyLocationScouts
+        - CommandKeyUpdateHint
+        - CommandKeyStatusUpdate
+        - CommandKeySay
+        - CommandKeyGetDataPackage
+        - CommandKeyBounce
+        - CommandKeyGet
+        - CommandKeySet
+        - CommandKeySetNotify
+
     OperationKey:
       description: The following operations can be applied to a datastorage key
       type: string
