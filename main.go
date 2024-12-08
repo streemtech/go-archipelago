@@ -71,6 +71,13 @@ func main() {
 		pp.Println(err.Error())
 	}
 
+	// time.Sleep(time.Second)
+	// client.LocationChecks(context.Background(), api.LocationChecks{
+	// 	Locations: []int{
+	// 		69696968, 69696969,
+	// 	},
+	// })
+
 	client.wg.Wait()
 
 }
