@@ -767,6 +767,11 @@ components:
       description:
         An object representing software versioning. Used in the Connect packet to
         allow the client to inform the server of the Archipelago version it supports.
+      required:
+        - major
+        - minor
+        - build
+        - class
       properties:
         major:
           type: integer
@@ -774,6 +779,9 @@ components:
           type: integer
         build:
           type: integer
+        class:
+          type: string
+          description: constant string set to "Version"
     JSONMessagePart:
       description: |
         Message nodes sent along with PrintJSON packet to be reconstructed into a legible message. 

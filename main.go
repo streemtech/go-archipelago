@@ -7,6 +7,7 @@ import (
 
 	// "github.com/google/uuid"
 
+	"github.com/google/uuid"
 	"github.com/k0kubun/pp/v3"
 	"github.com/pkg/errors"
 	"github.com/streemtech/go-archipelago/api"
@@ -46,22 +47,23 @@ func main() {
 
 	client.conn.Start()
 
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 1)
 
 	err = errors.Wrap(client.Connect(context.Background(), api.Connect{
 		Game:          "Clique",
-		ItemsHandling: api.ItemHandlingFlagOtherWorlds,
+		ItemsHandling: api.ItemHandlingFlagOtherWorlds | api.ItemHandlingFlagOwnWorld | api.ItemHandlingFlagStartingInventory,
 		Name:          "JeffClique1",
 		Password:      "",
 		SlotData:      true,
-		// Uuid:          uuid.NewString(),
+		Uuid:          uuid.NewString(),
 		Version: api.NetworkVersion{
-			Major: ptr(5),
-			Minor: ptr(0),
-			Build: ptr(1),
+			Major: 5,
+			Minor: 0,
+			Build: 1,
+			Class: "Version",
 		},
 		Tags: []api.Tags{
-			// api.TagValueHintGame,
+			api.TagValueDeathLink,
 		},
 	}), "failed to send connect")
 

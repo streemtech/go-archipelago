@@ -162,12 +162,15 @@ func (c *Client) handleCommand(ctx context.Context, cmd api.Command) error {
 }
 
 func (c *Client) handleBouncedCommand(ctx context.Context, cmd api.Bounced) (err error) {
+	pp.Println(cmd)
 	return nil
 }
 func (c *Client) handleConnectedCommand(ctx context.Context, cmd api.Connected) (err error) {
+	pp.Println(cmd)
 	return nil
 }
 func (c *Client) handleConnectionRefusedCommand(ctx context.Context, cmd api.ConnectionRefused) (err error) {
+	pp.Println(cmd)
 	return nil
 }
 func (c *Client) handleDataPackageCommand(ctx context.Context, cmd api.DataPackage) (err error) {
@@ -180,18 +183,24 @@ func (c *Client) handleDataPackageCommand(ctx context.Context, cmd api.DataPacka
 	return nil
 }
 func (c *Client) handleInvalidPacketCommand(ctx context.Context, cmd api.InvalidPacket) (err error) {
+	pp.Println(cmd)
 	return nil
 }
 func (c *Client) handleLocationInfoCommand(ctx context.Context, cmd api.LocationInfo) (err error) {
+	pp.Println(cmd)
 	return nil
 }
 func (c *Client) handlePrintJSONCommand(ctx context.Context, cmd api.PrintJSON) (err error) {
+	pp.Println(cmd)
+
 	return nil
 }
 func (c *Client) handleReceivedItemsCommand(ctx context.Context, cmd api.ReceivedItems) (err error) {
+	pp.Println(cmd)
 	return nil
 }
 func (c *Client) handleRetrievedCommand(ctx context.Context, cmd api.Retrieved) (err error) {
+	pp.Println(cmd)
 	return nil
 }
 func (c *Client) handleRoomInfoCommand(ctx context.Context, cmd api.RoomInfo) (err error) {

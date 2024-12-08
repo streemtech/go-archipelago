@@ -588,9 +588,12 @@ type NetworkSlot struct {
 
 // NetworkVersion An object representing software versioning. Used in the Connect packet to allow the client to inform the server of the Archipelago version it supports.
 type NetworkVersion struct {
-	Build *int `json:"build,omitempty"`
-	Major *int `json:"major,omitempty"`
-	Minor *int `json:"minor,omitempty"`
+	Build int `json:"build"`
+
+	// Class constant string set to "Version"
+	Class string `json:"class"`
+	Major int    `json:"major"`
+	Minor int    `json:"minor"`
 }
 
 // OperationKey The following operations can be applied to a datastorage key
