@@ -3,7 +3,6 @@ package network
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/coder/websocket"
@@ -192,7 +191,7 @@ func (ci *ClientImpl) SendCommand(cmds api.Commands) (err error) {
 		return errors.Wrap(marshalErr, "failed to marshal commands")
 	}
 
-	fmt.Println(string(data))
+	// fmt.Println(string(data))
 
 	//send commands to destination server.
 	writeErr := ci.conn.Write(ci.rootCtx, websocket.MessageText, data)
