@@ -282,7 +282,7 @@ type ConnectUpdate struct {
 
 // Connected Sent to clients when the connection handshake is successfully completed.
 type Connected struct {
-	// CheckedLocations Contains ids of all locations that have been checked. Useful for trackers, among other things. Location ids are in the range of ± 253-1.
+	// CheckedLocations Contains ids of all locations that have been checked. Useful for trackers, among other things. Location ids are in the range of ± (2^53)-1.
 	CheckedLocations []int  `json:"checked_locations"`
 	Cmd              string `json:"cmd"`
 

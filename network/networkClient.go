@@ -3,6 +3,7 @@ package network
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/coder/websocket"
@@ -116,11 +117,11 @@ func NewClient(props ClientProps) (client Client, err error) {
 func (ci *ClientImpl) Start() (err error) {
 
 	conn, _, err := websocket.Dial(ci.rootCtx, ci.url, ci.dialOpts)
-	conn.SetReadLimit(ci.readLimit)
 
 	if err != nil {
 		return errors.Wrap(err, "failed to dial archipelago server")
 	}
+	conn.SetReadLimit(ci.readLimit)
 
 	ci.conn = conn
 
@@ -190,6 +191,8 @@ func (ci *ClientImpl) SendCommand(cmds api.Commands) (err error) {
 	if marshalErr != nil {
 		return errors.Wrap(marshalErr, "failed to marshal commands")
 	}
+
+	fmt.Println(string(data))
 
 	//send commands to destination server.
 	writeErr := ci.conn.Write(ci.rootCtx, websocket.MessageText, data)

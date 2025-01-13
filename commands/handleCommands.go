@@ -1,4 +1,4 @@
-package main
+package commands
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 
 	// "github.com/google/uuid"
 
-	"github.com/k0kubun/pp/v3"
 	"github.com/pkg/errors"
 	"github.com/streemtech/go-archipelago/api"
 )
@@ -17,8 +16,6 @@ func (c *Client) handleCommand(ctx context.Context, cmd api.Command) error {
 	if err != nil {
 		return errors.New("Failed to extract cmd discriminator")
 	}
-
-	fmt.Printf("got %s command\n", cmdKey)
 
 	switch api.CommandKeys(cmdKey) {
 	case api.CommandKeyBounced:
@@ -154,7 +151,7 @@ func (c *Client) handleCommand(ctx context.Context, cmd api.Command) error {
 		api.CommandKeyStatusUpdate,
 		api.CommandKeySync,
 		api.CommandKeyUpdateHint:
-		return errors.Errorf("command %s should not be sent by server to client", cmdKey)
+		return errors.Errorf("command %s should not be sent to client by the server", cmdKey)
 	default:
 		return errors.Errorf("unknown discriminator cmd %s", cmdKey)
 	}
@@ -162,70 +159,87 @@ func (c *Client) handleCommand(ctx context.Context, cmd api.Command) error {
 }
 
 func (c *Client) handleBouncedCommand(ctx context.Context, cmd api.Bounced) (err error) {
-	pp.Println(cmd)
+	if c.BouncedCommandHandler != nil {
+		return c.BouncedCommandHandler(ctx, cmd)
+	}
+	fmt.Println("Got Unhandled Bounced Command")
 	return nil
 }
 func (c *Client) handleConnectedCommand(ctx context.Context, cmd api.Connected) (err error) {
-	pp.Println(cmd)
+	if c.ConnectedCommandHandler != nil {
+		return c.ConnectedCommandHandler(ctx, cmd)
+	}
+	fmt.Println("Got Unhandled Connected Command")
 	return nil
 }
 func (c *Client) handleConnectionRefusedCommand(ctx context.Context, cmd api.ConnectionRefused) (err error) {
-	pp.Println(cmd)
+	if c.ConnectionRefusedCommandHandler != nil {
+		return c.ConnectionRefusedCommandHandler(ctx, cmd)
+	}
+	fmt.Println("Got Unhandled ConnectionRefused Command")
 	return nil
 }
 func (c *Client) handleDataPackageCommand(ctx context.Context, cmd api.DataPackage) (err error) {
-	for game, data := range cmd.Data.Games {
-		c.dataPackages[game] = data
+	if c.DataPackageCommandHandler != nil {
+		return c.DataPackageCommandHandler(ctx, cmd)
 	}
-
-	pp.Println(fmt.Sprintf("got %d items in data package\n", len(c.dataPackages)))
+	fmt.Println("Got Unhandled DataPackage Command")
 
 	return nil
 }
 func (c *Client) handleInvalidPacketCommand(ctx context.Context, cmd api.InvalidPacket) (err error) {
-	pp.Println(cmd)
+	if c.InvalidPacketCommandHandler != nil {
+		return c.InvalidPacketCommandHandler(ctx, cmd)
+	}
+	fmt.Println("Got Unhandled InvalidPacket Command")
 	return nil
 }
 func (c *Client) handleLocationInfoCommand(ctx context.Context, cmd api.LocationInfo) (err error) {
-	pp.Println(cmd)
+	if c.LocationInfoCommandHandler != nil {
+		return c.LocationInfoCommandHandler(ctx, cmd)
+	}
+	fmt.Println("Got Unhandled LocationInfo Command")
 	return nil
 }
 func (c *Client) handlePrintJSONCommand(ctx context.Context, cmd api.PrintJSON) (err error) {
-	pp.Println(cmd)
-
+	if c.PrintJSONCommandHandler != nil {
+		return c.PrintJSONCommandHandler(ctx, cmd)
+	}
+	fmt.Println("Got Unhandled PrintJSON Command")
 	return nil
 }
 func (c *Client) handleReceivedItemsCommand(ctx context.Context, cmd api.ReceivedItems) (err error) {
-	pp.Println(cmd)
+	if c.ReceivedItemsCommandHandler != nil {
+		return c.ReceivedItemsCommandHandler(ctx, cmd)
+	}
+	fmt.Println("Got Unhandled ReceivedItems Command")
 	return nil
 }
 func (c *Client) handleRetrievedCommand(ctx context.Context, cmd api.Retrieved) (err error) {
-	pp.Println(cmd)
+	if c.RetrievedCommandHandler != nil {
+		return c.RetrievedCommandHandler(ctx, cmd)
+	}
+	fmt.Println("Got Unhandled Retrieved Command")
 	return nil
 }
 func (c *Client) handleRoomInfoCommand(ctx context.Context, cmd api.RoomInfo) (err error) {
-	gamesToGetDPFor := []string{}
-	for gameKey, gameHash := range cmd.DatapackageChecksums {
-		if game, ok := c.dataPackages[gameKey]; !ok || game.Checksum != gameHash {
-			gamesToGetDPFor = append(gamesToGetDPFor, gameKey)
-			//data package does not have game or datapackage checksum does not match the game checksum.
-		}
+	if c.RoomInfoCommandHandler != nil {
+		return c.RoomInfoCommandHandler(ctx, cmd)
 	}
-
-	if len(gamesToGetDPFor) > 0 {
-		err = c.GetDataPackage(ctx, api.GetDataPackage{
-			Games: &gamesToGetDPFor,
-		})
-		if err != nil {
-			return errors.Wrap(err, "failed to request game data packages")
-		}
-	}
-
+	fmt.Println("Got Unhandled RoomInfo Command")
 	return nil
 }
 func (c *Client) handleRoomUpdateCommand(ctx context.Context, cmd api.RoomUpdate) (err error) {
+	if c.RoomUpdateCommandHandler != nil {
+		return c.RoomUpdateCommandHandler(ctx, cmd)
+	}
+	fmt.Println("Got Unhandled RoomUpdate Command")
 	return nil
 }
 func (c *Client) handleSetReplyCommand(ctx context.Context, cmd api.SetReply) (err error) {
+	if c.SetReplyCommandHandler != nil {
+		return c.SetReplyCommandHandler(ctx, cmd)
+	}
+	fmt.Println("Got Unhandled SetReply Command")
 	return nil
 }

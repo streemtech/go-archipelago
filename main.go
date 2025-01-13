@@ -1,25 +1,18 @@
 package main
 
 import (
-	"context"
-	"sync"
-	"time"
 
 	// "github.com/google/uuid"
 
-	"github.com/google/uuid"
+	"context"
+	"fmt"
+	"time"
+
 	"github.com/k0kubun/pp/v3"
 	"github.com/pkg/errors"
 	"github.com/streemtech/go-archipelago/api"
-	"github.com/streemtech/go-archipelago/network"
+	"github.com/streemtech/go-archipelago/managed"
 )
-
-type Client struct {
-	dataPackages map[string]api.GameData
-
-	conn network.Client
-	wg   sync.WaitGroup
-}
 
 func ptr[T any](data T) *T {
 	return &data
@@ -28,70 +21,23 @@ func ptr[T any](data T) *T {
 // Testing only. Will be removed shortly.
 func main() {
 
-	client := &Client{
-		dataPackages: map[string]api.GameData{},
-	}
-
-	client.wg.Add(1)
-
-	networkClient, err := network.NewClient(network.ClientProps{
-		Url:              "wss://archipelago.gg:59024",
-		CommandsCallback: client.commandCallback,
-		CloseCallback:    client.closeCallback,
-	})
-
+	now := time.Now()
+	mc, err := managed.NewClient("wss://archipelago.gg:12345", "example", managed.WithOnPrintJSON(func(ctx context.Context, cmd api.PrintJSON, receiverSlotInfo api.NetworkSlot, finderSlotInfo api.NetworkSlot, item string, location_where_found string) error {
+		pp.Println(cmd, receiverSlotInfo, finderSlotInfo, item, location_where_found)
+		return nil
+	}))
 	if err != nil {
 		panic(err.Error())
 	}
-	client.conn = networkClient
-
-	client.conn.Start()
-
-	time.Sleep(time.Second * 1)
-
-	err = errors.Wrap(client.Connect(context.Background(), api.Connect{
-		Game:          "Clique",
-		ItemsHandling: api.ItemHandlingFlagOtherWorlds | api.ItemHandlingFlagOwnWorld | api.ItemHandlingFlagStartingInventory,
-		Name:          "JeffClique1",
-		Password:      "",
-		SlotData:      true,
-		Uuid:          uuid.NewString(),
-		Version: api.NetworkVersion{
-			Major: 5,
-			Minor: 0,
-			Build: 1,
-			Class: "Version",
-		},
-		Tags: []api.Tags{
-			api.TagValueDeathLink,
-		},
-	}), "failed to send connect")
-
-	if err != nil {
-		pp.Println(err.Error())
-	}
 
 	// time.Sleep(time.Second)
-	// client.LocationChecks(context.Background(), api.LocationChecks{
-	// 	Locations: []int{
-	// 		69696968, 69696969,
-	// 	},
-	// })
+	mc.Deathlink(context.Background(), "Bot Builder triggered a deathlink")
+	// time.Sleep(time.Hour * 24)
 
-	client.wg.Wait()
-
-}
-
-func (c *Client) commandCallback(ctx context.Context, cmds api.Commands) {
-	for _, v := range cmds {
-		err := c.handleCommand(ctx, v)
-		if err != nil {
-			pp.Println("command error", err.Error())
-		}
+	err = mc.Close()
+	if err != nil {
+		panic(errors.Wrap(err, "failed to close").Error())
 	}
-}
+	fmt.Println(time.Since(now))
 
-func (c *Client) closeCallback(err error) {
-	pp.Println("Service Closed", err.Error())
-	c.wg.Done()
 }

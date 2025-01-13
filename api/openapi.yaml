@@ -193,7 +193,7 @@ components:
           items:
             type: integer
         checked_locations:
-          description: Contains ids of all locations that have been checked. Useful for trackers, among other things. Location ids are in the range of ± 253-1.
+          description: Contains ids of all locations that have been checked. Useful for trackers, among other things. Location ids are in the range of ± (2^53)-1.
           type: array
           items:
             type: integer
@@ -1006,9 +1006,9 @@ components:
       x-enum-descriptions:
         - Signifies that this client is a reference client, its usefulness is mostly in debugging to compare client behaviours more easily.
         - Client participates in the DeathLink mechanic, therefore will send and receive DeathLink bounce packets.
-        - Indicates the client is a hint game, made to send hints instead of locations. Special join/leave message, game is optional.
-        - Indicates the client is a tracker, made to track instead of sending locations. Special join/leave message, game is optional.
-        - Indicates the client is a basic client, made to chat instead of sending locations. Special join/leave message, game is optional.
+        - Indicates the client is a hint game, made to send hints instead of locations. Special join/leave message, game is optional. PR in progress to make hint game reject location checks.
+        - Indicates the client is a tracker, made to track instead of sending locations. Special join/leave message, game is optional. Will reject Location checks, but not goal completes.
+        - Indicates the client is a basic client, made to chat instead of sending locations. Special join/leave message, game is optional. Will reject Location checks, but not goal completes.
     SlotType:
       type: integer
       description: An enum representing the nature of a slot.
