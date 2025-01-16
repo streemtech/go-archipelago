@@ -2,6 +2,7 @@ package managed
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/streemtech/go-archipelago/api"
 	"github.com/streemtech/go-archipelago/commands"
 	"github.com/streemtech/go-archipelago/network"
+	"github.com/streemtech/go-archipelago/utils"
 )
 
 func WithPassword(password string) Option {
@@ -21,6 +23,13 @@ func WithPassword(password string) Option {
 func WithGame(game string) Option {
 	return func(client *client) {
 		client.game = game
+	}
+}
+
+// triggers when a deathlink is gotten, and does something.
+func WithLogger(l utils.Logger) Option {
+	return func(client *client) {
+		client.log = l
 	}
 }
 
@@ -52,6 +61,13 @@ func WithOnDeathlink(callback func(ctx context.Context, cmd api.Bounced) error) 
 	}
 }
 
+// triggers when the disconnect is called
+func WithOnDisconnect(callback func(err error)) Option {
+	return func(client *client) {
+		client.dc = callback
+	}
+}
+
 type Option func(client *client)
 
 type client struct {
@@ -70,11 +86,14 @@ type client struct {
 	password string
 	slot     string
 
+	log utils.Logger
+
 	//print json command callback. Will eventually be replaced with dedicated, cleaner "Get Item" callback
 	pj func(ctx context.Context, cmd api.PrintJSON, receiverSlotInfo api.NetworkSlot, finderSlotInfo api.NetworkSlot, item string, location_where_found string) error
 	ri func(ctx context.Context, cmd api.ReceivedItems) error
 	ru func(ctx context.Context, cmd api.RoomUpdate) error
 	dl func(ctx context.Context, cmd api.Bounced) error
+	dc func(err error)
 }
 
 func NewClient(address string, slotName string, opts ...Option) (c *client, err error) {
@@ -83,34 +102,39 @@ func NewClient(address string, slotName string, opts ...Option) (c *client, err 
 		wg:           &sync.WaitGroup{},
 		dataPackages: map[string]api.GameData{},
 		slot:         slotName,
+		log:          slog.Default(),
 	}
 
 	//commands must be set here, and not in the generator itself to prevent a nul pointer as c is null before its created.
-	c.cmd = &commands.Client{
-		RoomInfoCommandHandler:          c.handleRoomInfo,
-		DataPackageCommandHandler:       c.handleDataPackage,
-		ConnectedCommandHandler:         c.handleConnected,
-		ConnectionRefusedCommandHandler: c.handleConnectionRefused,
-		PrintJSONCommandHandler:         c.handlePrintJson,
-		ReceivedItemsCommandHandler:     c.handleReceivedItems,
-		RoomUpdateCommandHandler:        c.handleRoomUpdate,
-	}
-
+	c.cmd = &commands.Client{}
 	for _, v := range opts {
 		v(c)
 	}
+	c.cmd.RoomInfoCommandHandler = c.handleRoomInfo
+	c.cmd.DataPackageCommandHandler = c.handleDataPackage
+	c.cmd.ConnectedCommandHandler = c.handleConnected
+	c.cmd.ConnectionRefusedCommandHandler = c.handleConnectionRefused
+	c.cmd.PrintJSONCommandHandler = c.handlePrintJson
+	c.cmd.ReceivedItemsCommandHandler = c.handleReceivedItems
+	c.cmd.RoomUpdateCommandHandler = c.handleRoomUpdate
+	c.cmd.CloseCallbackHandler = c.handleClose
+
+	c.cmd.Log = c.log
 
 	c.net, err = network.NewClient(network.ClientProps{
 		Url:              address,
 		CommandsCallback: c.cmd.CommandCallback,
 		CloseCallback:    c.cmd.CloseCallback,
+		Log:              c.log,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to connect create network client")
 	}
 	c.cmd.Conn = c.net
 
-	// fmt.Println("Starting Network client")
+	if c.log != nil {
+		c.log.Debug("starting network client")
+	}
 
 	//start the command client, which initiates the method to listen for data packages etc. and wait for the WAIT command.
 	c.wg.Add(1)
@@ -119,7 +143,9 @@ func NewClient(address string, slotName string, opts ...Option) (c *client, err 
 		return nil, errors.Wrap(err, "failed to initialize client")
 	}
 
-	// fmt.Println("Waiting Network client")
+	if c.log != nil {
+		c.log.Debug("waiting for ")
+	}
 	c.wg.Wait()
 
 	// fmt.Println("Starting Connect")
@@ -157,11 +183,17 @@ func NewClient(address string, slotName string, opts ...Option) (c *client, err 
 }
 
 func (c *client) Close() (err error) {
+	if c.log != nil {
+		c.log.Debug("closing connection")
+	}
 	return c.net.Close()
 }
 
 // cause is the cause of the dathlink. For noderunner this will be an argument or default to "foo"
 func (c *client) Deathlink(ctx context.Context, cause string) (err error) {
+	if c.log != nil {
+		c.log.Info("sending deathlink")
+	}
 	return c.cmd.Bounce(ctx, api.Bounce{
 		Tags: &[]api.Tags{
 			api.TagValueDeathLink,
@@ -172,4 +204,14 @@ func (c *client) Deathlink(ctx context.Context, cause string) (err error) {
 			"source": c.slot,
 		},
 	})
+}
+
+func (c *client) Say(ctx context.Context, message string) (err error) {
+	if c.log != nil {
+		c.log.Info("sending message")
+	}
+	return c.cmd.Say(ctx, api.Say{
+		Text: message,
+	})
+
 }

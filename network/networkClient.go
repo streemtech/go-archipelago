@@ -8,6 +8,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/pkg/errors"
 	"github.com/streemtech/go-archipelago/api"
+	"github.com/streemtech/go-archipelago/utils"
 )
 
 type Client interface {
@@ -38,6 +39,8 @@ type ClientImpl struct {
 	url string
 
 	readLimit int64
+
+	log utils.Logger
 }
 
 type ClientProps struct {
@@ -65,6 +68,8 @@ type ClientProps struct {
 	// Host optionally overrides the Host HTTP header to send. If empty, the value
 	// of URL.Host will be used.
 	Host string
+
+	Log utils.Logger
 }
 
 func (c ClientProps) Validate() (err error) {
@@ -133,6 +138,13 @@ func (ci *ClientImpl) Start() (err error) {
 				if !ci.closed {
 					ci.closed = true
 					ci.conn.Close(websocket.StatusGoingAway, "read-error")
+				} else {
+					// if the connection is closed and closed is true, assume that the close call
+					// was made by the client intentionally. Send a nil to closeCallback
+					if ci.closeCallback != nil {
+						ci.closeCallback(nil)
+					}
+					return
 				}
 				if ci.closeCallback != nil {
 					ci.closeCallback(readErr)
@@ -147,6 +159,9 @@ func (ci *ClientImpl) Start() (err error) {
 					ci.closed = true
 					ci.conn.Close(websocket.StatusGoingAway, "unmarshal-error")
 				}
+
+				//if the json fails to unmarshal if it exists however,
+				//trigger the close command because something has gone wrong and we need to reload it.
 				if ci.closeCallback != nil {
 					ci.closeCallback(unmarshalErr)
 				}

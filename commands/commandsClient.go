@@ -5,6 +5,7 @@ import (
 
 	"github.com/streemtech/go-archipelago/api"
 	"github.com/streemtech/go-archipelago/network"
+	"github.com/streemtech/go-archipelago/utils"
 )
 
 type Client struct {
@@ -23,8 +24,10 @@ type Client struct {
 	RoomUpdateCommandHandler        func(ctx context.Context, cmd api.RoomUpdate) (err error)
 	SetReplyCommandHandler          func(ctx context.Context, cmd api.SetReply) (err error)
 
-	CloseCallbackHandler func()
+	CloseCallbackHandler func(err error)
 	CommandErrorHandler  func(cmd api.Command, err error)
+
+	Log utils.Logger
 }
 
 func (c *Client) CommandCallback(ctx context.Context, cmds api.Commands) {
@@ -40,6 +43,6 @@ func (c *Client) CommandCallback(ctx context.Context, cmds api.Commands) {
 
 func (c *Client) CloseCallback(err error) {
 	if c.CloseCallbackHandler != nil {
-		c.CloseCallbackHandler()
+		c.CloseCallbackHandler(err)
 	}
 }

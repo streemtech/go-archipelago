@@ -5,15 +5,18 @@ import (
 	"fmt"
 	"runtime/debug"
 
-	"github.com/k0kubun/pp/v3"
+	// "github.com/k0kubun/pp/v3"
 	"github.com/pkg/errors"
 	"github.com/streemtech/go-archipelago/api"
 )
 
 func (c *client) handleRoomInfo(ctx context.Context, cmd api.RoomInfo) (err error) {
+	if c.log != nil {
+		c.log.Debug("received room info")
+	}
 	defer func() {
 		if r := recover(); r != nil {
-			pp.Println("panic in room info", r)
+			// pp.Println("panic in room info", r)
 			debug.PrintStack()
 		}
 	}()
@@ -38,6 +41,9 @@ func (c *client) handleRoomInfo(ctx context.Context, cmd api.RoomInfo) (err erro
 	// pp.Println(gamesToGetDPFor)
 	if len(gamesToGetDPFor) > 0 {
 		// pp.Println("Sending data package")
+		if c.log != nil {
+			c.log.Debug("requested data package")
+		}
 		err = c.cmd.GetDataPackage(ctx, api.GetDataPackage{
 			Games: &gamesToGetDPFor,
 		})
@@ -48,6 +54,7 @@ func (c *client) handleRoomInfo(ctx context.Context, cmd api.RoomInfo) (err erro
 			return errors.Wrap(err, "failed to request game data packages")
 		}
 	} else {
+		//dont need to wait for data package, can just end it here.
 		c.wg.Done()
 	}
 
@@ -55,7 +62,10 @@ func (c *client) handleRoomInfo(ctx context.Context, cmd api.RoomInfo) (err erro
 }
 
 func (c *client) handleDataPackage(ctx context.Context, cmd api.DataPackage) (err error) {
-	pp.Println(cmd)
+	// pp.Println(cmd)
+	if c.log != nil {
+		c.log.Debug("received data package")
+	}
 	for game, data := range cmd.Data.Games {
 		c.dataPackages[game] = data
 	}
@@ -66,14 +76,20 @@ func (c *client) handleDataPackage(ctx context.Context, cmd api.DataPackage) (er
 func (c *client) handleConnected(ctx context.Context, cmd api.Connected) (err error) {
 	c.connected = true
 	c.connectedData = cmd
-	pp.Println(c.connectedData)
-
+	// pp.Println(c.connectedData)
+	if c.log != nil {
+		c.log.Debug("connected to server")
+	}
 	c.wg.Done()
 	return nil
 }
 func (c *client) handleConnectionRefused(ctx context.Context, cmd api.ConnectionRefused) (err error) {
 	c.connectionRefused = cmd
-	fmt.Println("Get Handle Connection")
+	// fmt.Println("Get Handle Connection")
+	if c.log != nil {
+		c.log.Error("connection to server refused")
+	}
+
 	c.wg.Done()
 	return nil
 }
@@ -129,6 +145,9 @@ func (c *client) handleRoomUpdate(ctx context.Context, cmd api.RoomUpdate) (err 
 }
 
 func (c *client) handleBounced(ctx context.Context, cmd api.Bounced) (err error) {
+	if c.log != nil {
+		c.log.Debug("received bounce command")
+	}
 	deathlink := false
 	if cmd.Tags != nil {
 
@@ -142,4 +161,15 @@ func (c *client) handleBounced(ctx context.Context, cmd api.Bounced) (err error)
 		return c.dl(ctx, cmd)
 	}
 	return nil
+}
+
+func (c *client) handleClose(err error) {
+	if c.log != nil {
+		c.log.Error("Got close")
+	}
+	if c.dc == nil {
+		return
+	}
+	c.dc(err)
+
 }
