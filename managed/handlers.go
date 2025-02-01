@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime/debug"
+	"time"
 
 	// "github.com/k0kubun/pp/v3"
 	"github.com/pkg/errors"
@@ -132,7 +133,54 @@ func (c *client) handlePrintJson(ctx context.Context, cmd api.PrintJSON) (err er
 
 func (c *client) handleReceivedItems(ctx context.Context, cmd api.ReceivedItems) (err error) {
 	if c.ri != nil {
-		return c.ri(ctx, cmd)
+		//TODO0 set the received items data.
+
+		var slot api.NetworkSlot
+		for _, v := range c.connectedData.SlotInfo {
+			if v.Name == c.slot {
+				slot = v
+				break
+			}
+		}
+
+		for _, v := range cmd.Items {
+			sourceSlotInfo := c.connectedData.SlotInfo[v.Player]
+
+			destGame := c.dataPackages[slot.Game]
+
+			sourceGameData := c.dataPackages[sourceSlotInfo.Game]
+
+			//set item name
+			itemName := ""
+			for name, id := range destGame.ItemNameToId {
+				if id == v.Item {
+					itemName = name
+					break
+				}
+			}
+
+			//set location name
+			locationName := ""
+			for name, id := range sourceGameData.LocationNameToId {
+				if id == v.Location {
+					locationName = name
+					break
+				}
+			}
+
+			rec := ReceivedItems{
+				Raw:            cmd,
+				SourceSlotName: sourceSlotInfo.Name,
+				DestSlotName:   slot.Name,
+				ItemName:       itemName,
+				LocationName:   locationName,
+			}
+			err = c.ri(ctx, rec)
+			if err != nil {
+				return errors.Wrap(err, "failed to send received to handler")
+			}
+		}
+
 	}
 	return nil
 }
@@ -155,10 +203,27 @@ func (c *client) handleBounced(ctx context.Context, cmd api.Bounced) (err error)
 			if v == api.TagValueDeathLink {
 				deathlink = true
 			}
+
 		}
 	}
 	if deathlink && c.dl != nil {
-		return c.dl(ctx, cmd)
+		dl := DeathLink{
+			Raw: cmd,
+		}
+
+		cause, _ := cmd.Data["cause"]
+		source, _ := cmd.Data["source"]
+		timeField, _ := cmd.Data["time"]
+
+		dl.Cause, _ = cause.(string)
+		dl.Source, _ = source.(string)
+		timeFloat, _ := timeField.(float64)
+
+		remainder := int64(timeFloat*1_000_000_000.0) % 1_000_000_000
+
+		time.Unix(int64(timeFloat), remainder)
+
+		return c.dl(ctx, dl)
 	}
 	return nil
 }
